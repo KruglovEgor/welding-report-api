@@ -1,0 +1,6 @@
+@welding_report_HostAddress = http://localhost:5213
+
+GET {{welding_report_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
