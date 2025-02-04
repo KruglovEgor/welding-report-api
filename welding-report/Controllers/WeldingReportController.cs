@@ -30,7 +30,7 @@ public class WeldingReportController : ControllerBase
             var uploadPath = Path.Combine(_env.ContentRootPath, "uploads");
             Directory.CreateDirectory(uploadPath);
 
-            var photoMap = await SavePhotos(request.Photos, uploadPath);
+            var photoMap = await SavePhotos(request.Photos);
             var excelBytes = GenerateExcel(request, photoMap);
 
             CleanupFiles(photoMap);
@@ -44,7 +44,8 @@ public class WeldingReportController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating report");
-            return StatusCode(500, "Internal Server Error");
+            //return StatusCode(500, "Internal Server Error");
+            return StatusCode(500, ex.Message);
         }
     }
 
@@ -99,17 +100,21 @@ public class WeldingReportController : ControllerBase
         return package.GetAsByteArray();
     }
 
-    private async Task<Dictionary<string, List<string>>> SavePhotos(
-    List<IFormFile> photos,
-    string uploadPath)
+    private async Task<Dictionary<string, List<string>>> SavePhotos(List<IFormFile> photos)
     {
+        var uploadsPath = Path.Combine(_env.ContentRootPath, "uploads");
+        if (!Directory.Exists(uploadsPath))
+        {
+            Directory.CreateDirectory(uploadsPath);
+            _logger.LogInformation($"Created uploads directory at: {uploadsPath}");
+        }
+
         var photoMap = new Dictionary<string, List<string>>();
 
         foreach (var photo in photos)
         {
             if (photo.Length == 0) continue;
 
-            // Извлекаем номер стыка из имени файла
             var jointNumber = Path.GetFileNameWithoutExtension(photo.FileName)?
                 .Split('_')[0]?
                 .Trim();
@@ -120,15 +125,12 @@ public class WeldingReportController : ControllerBase
                 continue;
             }
 
-            // Генерируем уникальное имя файла
             var safeFileName = $"{jointNumber}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
-            var filePath = Path.Combine(uploadPath, safeFileName);
+            var filePath = Path.Combine(uploadsPath, safeFileName);
 
-            // Сохраняем файл
             await using var stream = new FileStream(filePath, FileMode.Create);
             await photo.CopyToAsync(stream);
 
-            // Добавляем в словарь
             if (!photoMap.ContainsKey(jointNumber))
                 photoMap[jointNumber] = new List<string>();
 
