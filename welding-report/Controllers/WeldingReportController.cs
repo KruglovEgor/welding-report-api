@@ -1,6 +1,9 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
-using OfficeOpenXml;
+using Swashbuckle.AspNetCore.Annotations;
 using welding_report.Models;
+using welding_report.Services;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -8,31 +11,53 @@ public class WeldingReportController : ControllerBase
 {
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<WeldingReportController> _logger;
+    private readonly IExcelReportGenerator _excelGenerator;
     private const string UploadsFolder = "uploads";
 
     public WeldingReportController(
         IWebHostEnvironment env,
-        ILogger<WeldingReportController> logger)
+        ILogger<WeldingReportController> logger,
+        IExcelReportGenerator excelGenerator)
     {
         _env = env;
         _logger = logger;
+        _excelGenerator = excelGenerator;
     }
 
     [HttpPost("generate")]
-    public async Task<IActionResult> GenerateReport([FromForm] WeldingReportRequest request)
+    public async Task<IActionResult> GenerateReport(
+    [FromForm] string ReportNumber,
+    [FromForm] string Joints, // JSON string
+    [FromForm] List<IFormFile> Photos)
     {
         try
         {
-            // Валидация
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (string.IsNullOrEmpty(Joints))
+            {
+                return BadRequest("Joints cannot be empty.");
+            }
 
-            var uploadPath = Path.Combine(_env.ContentRootPath, "uploads");
-            Directory.CreateDirectory(uploadPath);
+            var joints = JsonSerializer.Deserialize<List<WeldingJoint>>(Joints);
+            if (joints == null || joints.Count == 0)
+            {
+                return BadRequest("Invalid JSON format or empty joints array.");
+            }
+
+            var request = new WeldingReportRequest
+            {
+                ReportNumber = ReportNumber,
+                Joints = joints,
+                Photos = Photos ?? new List<IFormFile>()
+            };
 
             var photoMap = await SavePhotos(request.Photos);
-            var excelBytes = GenerateExcel(request, photoMap);
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var excelBytes = _excelGenerator.GenerateReport(request, photoMap);
             CleanupFiles(photoMap);
 
             return File(
@@ -44,70 +69,14 @@ public class WeldingReportController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating report");
-            //return StatusCode(500, "Internal Server Error");
             return StatusCode(500, ex.Message);
         }
-    }
-
-    private byte[] GenerateExcel(WeldingReportRequest request, Dictionary<string, List<string>> photoMap)
-    {
-        using var package = new ExcelPackage();
-        var ws = package.Workbook.Worksheets.Add("Отчет");
-
-        // Заголовок
-        ws.Cells["A1"].Value = "№ Акта:";
-        ws.Cells["B1"].Value = request.ReportNumber;
-
-        // Шапка таблицы
-        var headers = new[]
-        {
-            "Тип оборудования", "№ трубопровода",
-            "№ Стыка", "Диаметр (мм)",
-            "п.м.", "Дюймаж", "Фото"
-        };
-
-        ws.Cells["A3"].LoadFromArrays(new[] { headers });
-
-        // Данные
-        var row = 4;
-        foreach (var joint in request.Joints)
-        {
-            ws.Cells[row, 1].Value = joint.EquipmentType;
-            ws.Cells[row, 2].Value = joint.PipelineNumber;
-            ws.Cells[row, 3].Value = joint.JointNumber;
-            ws.Cells[row, 4].Value = joint.DiameterMm;
-            ws.Cells[row, 5].Value = joint.LengthMeters;
-            ws.Cells[row, 6].Value = joint.DiameterMm / 25.4;
-
-            // Вставка фото
-            if (photoMap.TryGetValue(joint.JointNumber, out var photos))
-            {
-                using var imageStream = new FileStream(photos.First(), FileMode.Open);
-                var excelImage = ws.Drawings.AddPicture($"Photo{row}", imageStream);
-                excelImage.SetPosition(row - 1, 0, 6, 0);
-                excelImage.SetSize(100, 100);
-            }
-
-            row++;
-        }
-
-        // Форматирование
-        ws.Cells[ws.Dimension.Address].AutoFitColumns();
-        ws.Cells["D4:D100"].Style.Numberformat.Format = "0.00";
-        ws.Cells["E4:E100"].Style.Numberformat.Format = "0.00";
-        ws.Cells["F4:F100"].Style.Numberformat.Format = "0.00";
-
-        return package.GetAsByteArray();
     }
 
     private async Task<Dictionary<string, List<string>>> SavePhotos(List<IFormFile> photos)
     {
         var uploadsPath = Path.Combine(_env.ContentRootPath, "uploads");
-        if (!Directory.Exists(uploadsPath))
-        {
-            Directory.CreateDirectory(uploadsPath);
-            _logger.LogInformation($"Created uploads directory at: {uploadsPath}");
-        }
+        Directory.CreateDirectory(uploadsPath);
 
         var photoMap = new Dictionary<string, List<string>>();
 
@@ -115,16 +84,14 @@ public class WeldingReportController : ControllerBase
         {
             if (photo.Length == 0) continue;
 
-            var jointNumber = Path.GetFileNameWithoutExtension(photo.FileName)?
-                .Split('_')[0]?
-                .Trim();
-
-            if (string.IsNullOrEmpty(jointNumber))
+            var match = Regex.Match(photo.FileName, @"^(\d+)_");
+            if (!match.Success)
             {
                 _logger.LogWarning($"Invalid photo filename: {photo.FileName}");
                 continue;
             }
 
+            var jointNumber = match.Groups[1].Value;
             var safeFileName = $"{jointNumber}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
             var filePath = Path.Combine(uploadsPath, safeFileName);
 
@@ -139,6 +106,7 @@ public class WeldingReportController : ControllerBase
 
         return photoMap;
     }
+
 
     private void CleanupFiles(Dictionary<string, List<string>> photoMap)
     {
