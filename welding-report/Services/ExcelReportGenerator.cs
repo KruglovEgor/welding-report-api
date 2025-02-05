@@ -14,7 +14,7 @@
     {
         private const string TemplatePath = "Resources/Templates/WeldingReportTemplate.xlsx";
         private const string WorksheetName = "Отчет";
-        private const int MaxRowHeight = 200; // Максимальная высота строки
+        private const int MaxRowHeight = 600; // Максимальная высота строки
         private readonly ILogger<ExcelReportGenerator> _logger;
 
         public ExcelReportGenerator(ILogger<ExcelReportGenerator> logger)
@@ -57,7 +57,7 @@
 
                 // Добавление всех фото
                 double maxHeight = 50; // Высота будет хотя бы 50
-                double currentWidth = 0; // Отслеживает ширину занятого пространства
+                double currentWidth = 5; // Отслеживает ширину занятого пространства
 
                 if (!string.IsNullOrEmpty(joint.JointNumber) && photoMap.TryGetValue(joint.JointNumber, out var photos))
                 {
@@ -94,7 +94,7 @@
             int newHeight = (int)(bitmap.Height * scale);
 
             var picture = worksheet.Drawings.AddPicture($"Photo_{row}_{column}_{xOffset}", imagePath);
-            picture.SetPosition(row - 1, 0, column - 1, (int)xOffset);
+            picture.SetPosition(row - 1, 5, column - 1, (int)xOffset);
             picture.SetSize(newWidth, newHeight);
 
             return (newWidth, newHeight);
