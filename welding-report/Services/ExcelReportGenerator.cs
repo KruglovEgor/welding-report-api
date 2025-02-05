@@ -7,7 +7,7 @@
 
     public interface IExcelReportGenerator
     {
-        byte[] GenerateReport(WeldingReportRequest request, Dictionary<string, List<string>> photoMap);
+        byte[] GenerateReport(WeldingReportRequest request, Dictionary<string, string> photoMap);
     }
 
     public class ExcelReportGenerator : IExcelReportGenerator
@@ -22,7 +22,7 @@
             _logger = logger;
         }
 
-        public byte[] GenerateReport(WeldingReportRequest request, Dictionary<string, List<string>> photoMap)
+        public byte[] GenerateReport(WeldingReportRequest request, Dictionary<string, string> photoMap)
         {
             var templateFile = new FileInfo(TemplatePath);
 
@@ -35,7 +35,7 @@
             return package.GetAsByteArray();
         }
 
-        private void FillData(ExcelWorksheet worksheet, WeldingReportRequest request, Dictionary<string, List<string>> photoMap)
+        private void FillData(ExcelWorksheet worksheet, WeldingReportRequest request, Dictionary<string, string> photoMap)
         {
             const int startRow = 3;
             const int photoColumn = 9;
@@ -59,11 +59,11 @@
                 double maxHeight = 50; // Высота будет хотя бы 50
                 double currentWidth = 5; // Отслеживает ширину занятого пространства
 
-                if (!string.IsNullOrEmpty(joint.JointNumber) && photoMap.TryGetValue(joint.JointNumber, out var photos))
+                foreach (var photoName in joint.PhotoNames)
                 {
-                    for (int j = 0; j < photos.Count; j++)
+                    if (photoMap.TryGetValue(photoName, out var photoPath))
                     {
-                        var imgSize = InsertImage(worksheet, row, photoColumn, photos[j], currentWidth);
+                        var imgSize = InsertImage(worksheet, row, photoColumn, photoPath, currentWidth);
                         currentWidth += imgSize.width + 5; // Добавляем небольшой отступ
                         maxHeight = Math.Max(maxHeight, imgSize.height);
                     }

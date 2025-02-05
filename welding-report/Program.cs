@@ -4,6 +4,13 @@ using OfficeOpenXml;
 using welding_report.Services;
 
 
+//TODO add more comments
+//TODO clean code
+//TODO try to make Swagger look better and feel more comfortable for testing
+//TODO make README file
+//TODO look if we really need to save photos
+//TODO fix cleanPhotos for local starting
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Настройка путей для загрузок

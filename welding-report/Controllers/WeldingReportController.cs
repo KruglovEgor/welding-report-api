@@ -73,46 +73,33 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-    private async Task<Dictionary<string, List<string>>> SavePhotos(List<IFormFile> photos)
+    private async Task<Dictionary<string, string>> SavePhotos(List<IFormFile> photos)
     {
-        var uploadsPath = Path.Combine(_env.ContentRootPath, "uploads");
+        var uploadsPath = Path.Combine(_env.ContentRootPath, UploadsFolder);
         Directory.CreateDirectory(uploadsPath);
 
-        var photoMap = new Dictionary<string, List<string>>();
+        var photoMap = new Dictionary<string, string>();
 
         foreach (var photo in photos)
         {
             if (photo.Length == 0) continue;
 
-            var match = Regex.Match(photo.FileName, @"^(\d+)_");
-            if (!match.Success)
-            {
-                _logger.LogWarning($"Invalid photo filename: {photo.FileName}");
-                continue;
-            }
-
-            var jointNumber = match.Groups[1].Value;
-            var safeFileName = $"{jointNumber}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+            var safeFileName = $"{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
             var filePath = Path.Combine(uploadsPath, safeFileName);
 
             await using var stream = new FileStream(filePath, FileMode.Create);
             await photo.CopyToAsync(stream);
 
-            if (!photoMap.ContainsKey(jointNumber))
-                photoMap[jointNumber] = new List<string>();
-
-            photoMap[jointNumber].Add(filePath);
+            photoMap[photo.FileName] = filePath;
         }
 
         return photoMap;
     }
 
-    //TODO fix
-    private void CleanupFiles(Dictionary<string, List<string>> photoMap)
+    // Работает только для docker. В локалке - нет
+    private void CleanupFiles(Dictionary<string, string> photoMap)
     {
-        foreach (var photos in photoMap.Values)
-        {
-            foreach (var path in photos)
+        foreach (var path in photoMap.Values)
             {
                 try
                 {
@@ -127,6 +114,6 @@ public class WeldingReportController : ControllerBase
                     _logger.LogError(ex, $"Error deleting file: {path}");
                 }
             }
-        }
+        
     }
 }

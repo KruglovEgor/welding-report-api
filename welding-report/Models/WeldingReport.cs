@@ -38,6 +38,8 @@ namespace welding_report.Models
 
         [Range(0.1, 100)]
         public double LengthMeters { get; set; }
+
+        public List<string> PhotoNames { get; set; } = new List<string>(); // Тут только ИМЕНА файлов
     }
 
     // Кастомный фильтр для обработки form-data
@@ -70,7 +72,8 @@ namespace welding_report.Models
                                     "\n\"CompanyName\":\"ООО СваркаМонтаж\"," +
                                     "\n\"JointNumber\":\"123\"," +
                                     "\n\"DiameterMm\":150.5," +
-                                    "\n\"LengthMeters\":2.75" +
+                                    "\n\"LengthMeters\":2.75," +
+                                    "\n\"PhotoNames\":[\"123_1.jpg\", \"123_2.jpg\", \"123_3.jpg\"]" +
                                     "\n}" +
                                     "\n]")
                                 },
