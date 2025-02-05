@@ -107,7 +107,7 @@ public class WeldingReportController : ControllerBase
         return photoMap;
     }
 
-
+    //TODO fix
     private void CleanupFiles(Dictionary<string, List<string>> photoMap)
     {
         foreach (var photos in photoMap.Values)

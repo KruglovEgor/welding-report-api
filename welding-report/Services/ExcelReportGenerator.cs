@@ -1,8 +1,9 @@
 ﻿namespace welding_report.Services
 {
     using OfficeOpenXml;
-    using System.Drawing;
     using welding_report.Models;
+    using SkiaSharp;
+    using System.Drawing;
 
     public interface IExcelReportGenerator
     {
@@ -13,6 +14,7 @@
     {
         private const string TemplatePath = "Resources/Templates/WeldingReportTemplate.xlsx";
         private const string WorksheetName = "Отчет";
+        private const int MaxRowHeight = 200; // Максимальная высота строки
         private readonly ILogger<ExcelReportGenerator> _logger;
 
         public ExcelReportGenerator(ILogger<ExcelReportGenerator> logger)
@@ -36,6 +38,7 @@
         private void FillData(ExcelWorksheet worksheet, WeldingReportRequest request, Dictionary<string, List<string>> photoMap)
         {
             const int startRow = 3;
+            const int photoColumn = 9;
             _logger.LogInformation($"Total joints: {request.Joints.Count}");
 
             for (var i = 0; i < request.Joints.Count; i++)
@@ -52,33 +55,49 @@
                 worksheet.Cells[row, 7].Value = joint.LengthMeters;
                 worksheet.Cells[row, 8].Value = joint.DiameterMm / 25.4;
 
-                if (!string.IsNullOrEmpty(joint.JointNumber) &&
-                    photoMap.TryGetValue(joint.JointNumber, out var photos) &&
-                    photos.Count > 0)
+                // Добавление всех фото
+                double maxHeight = 50; // Высота будет хотя бы 50
+                double currentWidth = 0; // Отслеживает ширину занятого пространства
+
+                if (!string.IsNullOrEmpty(joint.JointNumber) && photoMap.TryGetValue(joint.JointNumber, out var photos))
                 {
-                    InsertImage(worksheet, row, photos.First());
+                    for (int j = 0; j < photos.Count; j++)
+                    {
+                        var imgSize = InsertImage(worksheet, row, photoColumn, photos[j], currentWidth);
+                        currentWidth += imgSize.width + 5; // Добавляем небольшой отступ
+                        maxHeight = Math.Max(maxHeight, imgSize.height);
+                    }
                 }
-                else
-                {
-                    _logger.LogWarning($"No photos found for joint {joint.JointNumber}");
-                }
+
+                worksheet.Row(row).Height = Math.Min(MaxRowHeight, maxHeight);
+                worksheet.Column(photoColumn).Width = Math.Max(currentWidth / 7.0, worksheet.Column(photoColumn).Width); // Excel использует особую шкалу ширины
+                var range = worksheet.Cells[row, 1, row, photoColumn];
+
+                // Устанавливаем границы для каждой ячейки в строке
+                range.Style.Border.Top.Style = OfficeOpenXml.Style.ExcelBorderStyle.Thin;
+                range.Style.Border.Left.Style = OfficeOpenXml.Style.ExcelBorderStyle.Thin;
+                range.Style.Border.Right.Style = OfficeOpenXml.Style.ExcelBorderStyle.Thin;
+                range.Style.Border.Bottom.Style = OfficeOpenXml.Style.ExcelBorderStyle.Thin;
             }
         }
 
-        private void InsertImage(ExcelWorksheet worksheet, int row, string imagePath)
+        private (double width, double height) InsertImage(ExcelWorksheet worksheet, int row, int column, string imagePath, double xOffset)
         {
-            try
-            {
-                using var imageStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read);
-                var picture = worksheet.Drawings.AddPicture($"Photo{row}", imageStream);
-                picture.SetPosition(row - 1, 0, 9, 0);
-                picture.SetSize(100, 100);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Failed to insert image {imagePath}");
-            }
-        }
+            using var imageStream = File.OpenRead(imagePath);
+            using var bitmap = SKBitmap.Decode(imageStream);
 
+            if (bitmap == null)
+                throw new Exception($"Не удалось загрузить изображение: {imagePath}");
+
+            double scale = Math.Min(1.0, MaxRowHeight / (double)bitmap.Height);
+            int newWidth = (int)(bitmap.Width * scale);
+            int newHeight = (int)(bitmap.Height * scale);
+
+            var picture = worksheet.Drawings.AddPicture($"Photo_{row}_{column}_{xOffset}", imagePath);
+            picture.SetPosition(row - 1, 0, column - 1, (int)xOffset);
+            picture.SetSize(newWidth, newHeight);
+
+            return (newWidth, newHeight);
+        }
     }
 }

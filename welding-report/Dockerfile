@@ -3,6 +3,16 @@ WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
+# Устанавливаем зависимости для SkiaSharp и System.Drawing
+RUN apt-get update && apt-get install -y \
+    libfontconfig1 \
+    libfreetype6 \
+    libpng-dev \
+    libjpeg-dev \
+    libglib2.0-dev \
+    libcairo2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN mkdir -p /app/uploads && chmod 777 /app/uploads
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
