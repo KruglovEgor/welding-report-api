@@ -20,7 +20,7 @@ namespace welding_report.Models
 
     public class WeldingJoint
     {
-        [Required]
+        
         public string EquipmentType { get; set; }
 
         [Required]
@@ -32,7 +32,7 @@ namespace welding_report.Models
         [Required]
         public string JointNumber { get; set; }
 
-        [Required]
+        
         [Range(1, 1000)]
         public double DiameterMm { get; set; }
 

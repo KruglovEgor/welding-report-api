@@ -10,6 +10,7 @@ using welding_report.Services;
 //TODO make README file
 //TODO look if we really need to save photos
 //TODO fix cleanPhotos for local starting
+//TODO maybe store some constant values in config file
 
 var builder = WebApplication.CreateBuilder(args);
 
