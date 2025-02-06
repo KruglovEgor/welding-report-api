@@ -1,6 +1,7 @@
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using OfficeOpenXml;
+using welding_report.Models;
 using welding_report.Services;
 
 
@@ -23,9 +24,17 @@ if (!Directory.Exists(uploadsPath))
 }
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddSingleton<EmailService>();
 builder.Services.AddScoped<IExcelReportGenerator, ExcelReportGenerator>();
 builder.Services.AddSingleton<ExcelReportGenerator>();
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Configuration.AddUserSecrets<Program>();
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddSingleton<IEmailService, EmailService>();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Welding Report API", Version = "v1" });

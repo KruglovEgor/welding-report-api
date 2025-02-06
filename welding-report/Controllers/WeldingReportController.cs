@@ -13,15 +13,18 @@ public class WeldingReportController : ControllerBase
     private readonly ILogger<WeldingReportController> _logger;
     private readonly IExcelReportGenerator _excelGenerator;
     private const string UploadsFolder = "uploads";
+    private readonly IEmailService _emailService;
 
     public WeldingReportController(
         IWebHostEnvironment env,
         ILogger<WeldingReportController> logger,
-        IExcelReportGenerator excelGenerator)
+        IExcelReportGenerator excelGenerator,
+        IEmailService emailService)
     {
         _env = env;
         _logger = logger;
         _excelGenerator = excelGenerator;
+        _emailService = emailService;
     }
 
     [HttpPost("generate")]
@@ -70,6 +73,28 @@ public class WeldingReportController : ControllerBase
         {
             _logger.LogError(ex, "Error generating report");
             return StatusCode(500, ex.Message);
+        }
+    }
+
+    [HttpPost("send-report")]
+    public async Task<IActionResult> SendReport([FromForm] string recipientEmail)
+    {
+        try
+        {
+            var filePath = Path.Combine("Resources/Templates/WeldingReportTemplate.xlsx");
+            _logger.LogInformation(filePath);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound("Файл отчета не найден.");
+
+            var attachment = await System.IO.File.ReadAllBytesAsync(filePath);
+            await _emailService.SendReportAsync(recipientEmail, "Отчет по сварке", "Прикрепленный отчет во вложении.", attachment, "Report.xlsx");
+
+            return Ok("Отчет отправлен на email.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при отправке отчета");
+            return StatusCode(500, "Ошибка сервера");
         }
     }
 
