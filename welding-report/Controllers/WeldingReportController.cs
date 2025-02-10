@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.Annotations;
 using welding_report.Models;
 using welding_report.Services;
@@ -14,17 +15,20 @@ public class WeldingReportController : ControllerBase
     private readonly IExcelReportGenerator _excelGenerator;
     private const string UploadsFolder = "uploads";
     private readonly IEmailService _emailService;
+    private readonly AppSettings _appSettings;
 
     public WeldingReportController(
         IWebHostEnvironment env,
         ILogger<WeldingReportController> logger,
         IExcelReportGenerator excelGenerator,
-        IEmailService emailService)
+        IEmailService emailService,
+        IOptions<AppSettings> appSettings)
     {
         _env = env;
         _logger = logger;
         _excelGenerator = excelGenerator;
         _emailService = emailService;
+        _appSettings = appSettings.Value;
     }
 
     [HttpPost("generate")]
@@ -62,6 +66,10 @@ public class WeldingReportController : ControllerBase
 
             var excelBytes = _excelGenerator.GenerateReport(request, photoMap);
             CleanupFiles(photoMap);
+            // В методе GenerateReport после генерации excelBytes:
+            var reportPath = Path.Combine(_env.ContentRootPath, _appSettings.ReportStoragePath, $"{request.ReportNumber}.xlsx");
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+            await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
 
             return File(
                 excelBytes,
@@ -77,17 +85,28 @@ public class WeldingReportController : ControllerBase
     }
 
     [HttpPost("send-report")]
-    public async Task<IActionResult> SendReport([FromForm] string recipientEmail)
+    public async Task<IActionResult> SendReport(
+        [FromForm] string recipientEmail,
+        [FromForm] string reportNumber)
     {
         try
-        {
-            var filePath = Path.Combine("Resources/Templates/WeldingReportTemplate.xlsx");
-            _logger.LogInformation(filePath);
-            if (!System.IO.File.Exists(filePath))
-                return NotFound("Файл отчета не найден.");
+    {
+            // Валидация email
+            if (!IsValidEmail(recipientEmail))
+                return BadRequest("Неверный формат email.");
 
-            var attachment = await System.IO.File.ReadAllBytesAsync(filePath);
-            await _emailService.SendReportAsync(recipientEmail, "Отчет по сварке", "Прикрепленный отчет во вложении.", attachment, "Report.xlsx");
+            // Поиск отчёта
+            var reportPath = Path.Combine(
+                _env.ContentRootPath,
+                _appSettings.ReportStoragePath,
+                $"{reportNumber}.xlsx"
+            );
+
+            if (!System.IO.File.Exists(reportPath))
+                return NotFound("Отчёт не найден.");
+
+            var attachment = await System.IO.File.ReadAllBytesAsync(reportPath);
+            await _emailService.SendReportAsync(recipientEmail, "Отчет по сварке", "Прикрепленный отчет во вложении.", attachment, $"{reportNumber}.xlsx");
 
             return Ok("Отчет отправлен на email.");
         }
@@ -96,6 +115,11 @@ public class WeldingReportController : ControllerBase
             _logger.LogError(ex, "Ошибка при отправке отчета");
             return StatusCode(500, "Ошибка сервера");
         }
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
     }
 
     private async Task<Dictionary<string, string>> SavePhotos(List<IFormFile> photos)

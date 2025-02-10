@@ -15,33 +15,32 @@ using welding_report.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Настройка путей для загрузок
-var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, "uploads");
-if (!Directory.Exists(uploadsPath))
-{
-    Directory.CreateDirectory(uploadsPath);
-    Console.WriteLine($"Created uploads directory at: {uploadsPath}");
-}
+// Конфигурация путей из AppSettings
+var appSettings = builder.Configuration.GetSection("AppSettings").Get<AppSettings>();
+var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, appSettings.UploadsFolder);
+var reportsPath = Path.Combine(builder.Environment.ContentRootPath, appSettings.ReportStoragePath);
+
+// Создание необходимых директорий
+Directory.CreateDirectory(uploadsPath);
+Directory.CreateDirectory(reportsPath);
+Console.WriteLine($"Created directories:\nUploads: {uploadsPath}\nReports: {reportsPath}");
+
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddSingleton<EmailService>();
 builder.Services.AddScoped<IExcelReportGenerator, ExcelReportGenerator>();
-builder.Services.AddSingleton<ExcelReportGenerator>();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Configuration.AddUserSecrets<Program>();
-
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
-builder.Services.AddSingleton<IEmailService, EmailService>();
+builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
+
 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Welding Report API", Version = "v1" });
-
     // Добавляем поддержку multipart/form-data
     c.OperationFilter<welding_report.Models.FormDataOperationFilter>();
-
     // Включаем аннотации
     c.EnableAnnotations();
 }); 
@@ -51,7 +50,6 @@ builder.Services.AddSwaggerGen(c =>
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Для некоммерческого использованияs
 
 var app = builder.Build();
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

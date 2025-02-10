@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     libcairo2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /app/uploads && chmod 777 /app/uploads
+RUN mkdir -p /app/uploads /app/GeneratedReports && chmod -R 777 /app/uploads /app/GeneratedReports
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
@@ -30,4 +30,5 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080;https://+:8081
+VOLUME /app/uploads /app/GeneratedReports
 ENTRYPOINT ["dotnet", "welding-report.dll"]

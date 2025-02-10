@@ -4,6 +4,7 @@
     using welding_report.Models;
     using SkiaSharp;
     using System.Drawing;
+    using Microsoft.Extensions.Options;
 
     public interface IExcelReportGenerator
     {
@@ -12,25 +13,30 @@
 
     public class ExcelReportGenerator : IExcelReportGenerator
     {
-        private const string TemplatePath = "Resources/Templates/WeldingReportTemplate.xlsx";
-        private const string WorksheetName = "Отчет";
-        private const int MaxRowHeight = 600; // Максимальная высота строки
+        private readonly string _templatePath;
+        private readonly string _worksheetName;
+        private readonly int _maxRowHeight;
         private readonly ILogger<ExcelReportGenerator> _logger;
 
-        public ExcelReportGenerator(ILogger<ExcelReportGenerator> logger)
+        public ExcelReportGenerator(
+            ILogger<ExcelReportGenerator> logger,
+            IOptions<AppSettings> appSettings)
         {
             _logger = logger;
+            _templatePath = appSettings.Value.TemplatePath;
+            _worksheetName = appSettings.Value.WorksheetName;
+            _maxRowHeight = appSettings.Value.MaxRowHeight;
         }
 
         public byte[] GenerateReport(WeldingReportRequest request, Dictionary<string, string> photoMap)
         {
-            var templateFile = new FileInfo(TemplatePath);
+            var templateFile = new FileInfo(_templatePath);
 
             if (!templateFile.Exists)
-                throw new FileNotFoundException("Шаблон отчета не найден", TemplatePath);
+                throw new FileNotFoundException("Шаблон отчета не найден", _templatePath);
 
             using var package = new ExcelPackage(templateFile);
-            var worksheet = package.Workbook.Worksheets[WorksheetName];
+            var worksheet = package.Workbook.Worksheets[_worksheetName];
             FillData(worksheet, request, photoMap);
             return package.GetAsByteArray();
         }
@@ -76,7 +82,7 @@
                     }
                 }
 
-                worksheet.Row(row).Height = Math.Min(MaxRowHeight, maxHeight);
+                worksheet.Row(row).Height = Math.Min(_maxRowHeight, maxHeight);
                 worksheet.Column(photoColumn).Width = Math.Max(currentWidth / 7.0, worksheet.Column(photoColumn).Width); // Excel использует особую шкалу ширины
                 var range = worksheet.Cells[row, 1, row, photoColumn];
 
@@ -96,7 +102,7 @@
             if (bitmap == null)
                 throw new Exception($"Не удалось загрузить изображение: {imagePath}");
 
-            double scale = Math.Min(1.0, MaxRowHeight / (double)bitmap.Height);
+            double scale = Math.Min(1.0, _maxRowHeight / (double)bitmap.Height);
             int newWidth = (int)(bitmap.Width * scale);
             int newHeight = (int)(bitmap.Height * scale);
 
