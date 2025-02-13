@@ -34,7 +34,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Configuration.AddUserSecrets<Program>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
-
+builder.Services.Configure<RedmineSettings>(builder.Configuration.GetSection("RedmineSettings"));
+builder.Services.AddHttpClient<IRedmineService, RedmineService>();
 
 builder.Services.AddSwaggerGen(c =>
 {

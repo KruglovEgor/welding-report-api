@@ -16,19 +16,22 @@ public class WeldingReportController : ControllerBase
     private const string UploadsFolder = "uploads";
     private readonly IEmailService _emailService;
     private readonly AppSettings _appSettings;
+    private readonly IRedmineService _redmineService;
 
     public WeldingReportController(
         IWebHostEnvironment env,
         ILogger<WeldingReportController> logger,
         IExcelReportGenerator excelGenerator,
         IEmailService emailService,
-        IOptions<AppSettings> appSettings)
+        IOptions<AppSettings> appSettings,
+        IRedmineService redmineService)
     {
         _env = env;
         _logger = logger;
         _excelGenerator = excelGenerator;
         _emailService = emailService;
         _appSettings = appSettings.Value;
+        _redmineService = redmineService;
     }
 
     [HttpPost("generate")]
@@ -116,6 +119,23 @@ public class WeldingReportController : ControllerBase
             return StatusCode(500, "Ошибка сервера");
         }
     }
+
+    [HttpGet("redmine-test/{issueId}")]
+    [SwaggerOperation(Summary = "Тест авторизации и получения данных из Redmine")]
+    public async Task<IActionResult> TestRedmineAuth(int issueId)
+    {
+        try
+        {
+            var response = await _redmineService.GetIssueAsync<dynamic>(issueId);
+            return Ok(response);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Ошибка запроса к Redmine");
+            return StatusCode(500, $"Ошибка: {ex.Message}");
+        }
+    }
+
 
     private bool IsValidEmail(string email)
     {
