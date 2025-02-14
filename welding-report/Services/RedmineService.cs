@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using welding_report.Models;
 
 namespace welding_report.Services
@@ -7,6 +8,7 @@ namespace welding_report.Services
     public interface IRedmineService
     {
         Task<T> GetIssueAsync<T>(int issueId);
+        Task<T> GetChildIssuesAsync<T>(int parentId);
     }
 
     public class RedmineService : IRedmineService
@@ -32,7 +34,18 @@ namespace welding_report.Services
         {
             var response = await _httpClient.GetAsync($"issues/{issueId}.json");
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<T>();
+            //return await response.Content.ReadFromJsonAsync<T>();
+            return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
         }
+
+        public async Task<T> GetChildIssuesAsync<T>(int parentId)
+        {
+            var response = await _httpClient.GetAsync($"issues.json?parent_id={parentId}&status_id=*&include=attachments");
+            response.EnsureSuccessStatusCode();
+            //return await response.Content.ReadFromJsonAsync<T>();
+            return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
+        }
+
+
     }
 }

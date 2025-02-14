@@ -126,8 +126,34 @@ public class WeldingReportController : ControllerBase
     {
         try
         {
-            var response = await _redmineService.GetIssueAsync<dynamic>(issueId);
-            return Ok(response);
+            // Получение родительского акта
+            var parentResponse = await _redmineService.GetIssueAsync<dynamic>(issueId);
+            if (parentResponse?.GetProperty("issue").GetProperty("id").GetInt32() != issueId)
+                return NotFound("Акт не найден");
+
+            //if (parentResponse?.Issue == null)
+            //    return NotFound("Акт не найден");
+
+
+            // Получение дочерних групп стыков
+            var childrenResponse = await _redmineService.GetChildIssuesAsync<dynamic>(issueId);
+            var children = new List<object>();
+
+            foreach (var child in childrenResponse?.GetProperty("issues").EnumerateArray())
+            {
+                children.Add(child);
+            }
+
+
+            // Формирование ответа
+            var result = new
+            {
+                Parent = parentResponse,
+                Children = children
+            };
+
+            return Ok(result);
+
         }
         catch (HttpRequestException ex)
         {
