@@ -34,59 +34,6 @@ public class WeldingReportController : ControllerBase
         _redmineService = redmineService;
     }
 
-    [HttpPost("generate")]
-    public async Task<IActionResult> GenerateReport(
-    [FromForm] string ReportNumber,
-    [FromForm] string Joints, // JSON string
-    [FromForm] List<IFormFile> Photos)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(Joints))
-            {
-                return BadRequest("Joints cannot be empty.");
-            }
-
-            var joints = JsonSerializer.Deserialize<List<WeldingJoint>>(Joints);
-            if (joints == null || joints.Count == 0)
-            {
-                return BadRequest("Invalid JSON format or empty joints array.");
-            }
-
-            var request = new WeldingReportRequest
-            {
-                ReportNumber = ReportNumber,
-                Joints = joints,
-                Photos = Photos ?? new List<IFormFile>()
-            };
-
-            var photoMap = await SavePhotos(request.Photos);
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var excelBytes = _excelGenerator.GenerateReport(request, photoMap);
-            CleanupFiles(photoMap);
-            // В методе GenerateReport после генерации excelBytes:
-            var reportPath = Path.Combine(_env.ContentRootPath, _appSettings.ReportStoragePath, $"{request.ReportNumber}.xlsx");
-            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
-            await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
-
-            return File(
-                excelBytes,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                $"{request.ReportNumber}.xlsx"
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating report");
-            return StatusCode(500, ex.Message);
-        }
-    }
-
     [HttpPost("send-report")]
     public async Task<IActionResult> SendReport(
         [FromForm] string recipientEmail,
@@ -162,6 +109,35 @@ public class WeldingReportController : ControllerBase
         }
     }
 
+    [HttpPost("generate-from-redmine/{issueId}")]
+    public async Task<IActionResult> GenerateFromRedmine(int issueId)
+    {
+        try
+        {
+            var reportData = await _redmineService.GetReportDataAsync(issueId);
+            var excelBytes = await _excelGenerator.GenerateReport(reportData);
+
+            // Сохранение отчета
+            var reportPath = Path.Combine(
+                _env.ContentRootPath,
+                _appSettings.ReportStoragePath,
+                $"{reportData.ReportNumber}.xlsx"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+            await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
+
+            return File(
+                excelBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"{reportData.ReportNumber}.xlsx"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка генерации отчета");
+            return StatusCode(500, ex.Message);
+        }
+    }
 
     private bool IsValidEmail(string email)
     {
