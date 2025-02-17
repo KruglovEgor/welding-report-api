@@ -21,6 +21,7 @@
         private readonly string _worksheetName;
         private readonly int _maxRowHeight;
         private readonly ILogger<ExcelReportGenerator> _logger;
+        private readonly int _maxPhotoColumnWidth;
 
         public ExcelReportGenerator(
             ILogger<ExcelReportGenerator> logger,
@@ -30,6 +31,7 @@
             _templatePath = appSettings.Value.TemplatePath;
             _worksheetName = appSettings.Value.WorksheetName;
             _maxRowHeight = appSettings.Value.MaxRowHeight;
+            _maxPhotoColumnWidth = appSettings.Value.MaxPhotoColumnWidth;
         }
 
         public async Task<byte[]> GenerateReport(RedmineReportData data)
@@ -45,19 +47,18 @@
 
                 foreach (var entry in group.Entries)
                 {
-                    // Общие данные группы
                     worksheet.Cells[row, 1].Value = data.ReportNumber;
-                    worksheet.Cells[row, 6].Value = group.DiameterMm;
-                    worksheet.Cells[row, 8].Value = group.DiameterInches;
-
-                    // Данные подрядчика
-                    worksheet.Cells[row, 4].Value = entry.Contractor;
-                    worksheet.Cells[row, 5].Value = entry.JointNumbers;
+                    worksheet.Cells[row, 2].Value = group.ActParagraph;
+                    worksheet.Cells[row, 3].Value = group.EquipmentType;
+                    worksheet.Cells[row, 4].Value = group.PipelineNumber;
+                    worksheet.Cells[row, 5].Value = entry.Contractor;
+                    worksheet.Cells[row, 6].Value = entry.JointNumbers;
+                    worksheet.Cells[row, 7].Value = group.DiameterMm;
+                    worksheet.Cells[row, 9].Value = group.DiameterInches;
 
                     // Вставка фото
                     double currentWidth = 5;
-                    double maxHeight = 50;
-                    int photoColumn = 9;
+                    int photoColumn = 10;
 
                     foreach (var photoUrl in entry.PhotoUrls)
                     {
@@ -86,10 +87,8 @@
 
                             using var imageStream = new MemoryStream(imageBytes);
                             var imgSize = InsertImage(worksheet, row, photoColumn, imageStream, currentWidth);
-                            _logger.LogInformation($"Size: {imgSize}");
 
                             currentWidth += imgSize.width + 5;
-                            maxHeight = Math.Max(maxHeight, imgSize.height);
                         }
                         catch (Exception ex)
                         {
@@ -98,7 +97,7 @@
                     }
 
                     // Настройка размеров строки и столбца
-                    worksheet.Row(row).Height = Math.Min(_maxRowHeight, maxHeight);
+                    worksheet.Row(row).Height = _maxRowHeight+5;
                     worksheet.Column(photoColumn).Width = Math.Max(currentWidth / 7.0, worksheet.Column(photoColumn).Width);
 
                     // Границы ячеек
@@ -115,8 +114,14 @@
                 if (row > groupStartRow)
                 {
                     worksheet.Cells[groupStartRow, 1, row - 1, 1].Merge = true;
-                    worksheet.Cells[groupStartRow, 6, row - 1, 6].Merge = true;
+                    worksheet.Cells[groupStartRow, 2, row - 1, 2].Merge = true;
+                    worksheet.Cells[groupStartRow, 3, row - 1, 3].Merge = true;
+                    worksheet.Cells[groupStartRow, 4, row - 1, 4].Merge = true;
+                    
+                    worksheet.Cells[groupStartRow, 6, row - 1, 7].Merge = true;
                     worksheet.Cells[groupStartRow, 8, row - 1, 8].Merge = true;
+                    worksheet.Cells[groupStartRow, 9, row - 1, 9].Merge = true;
+
                 }
             }
 
@@ -153,15 +158,13 @@
                     _logger.LogError($"Нулевые размеры изображения: {bitmap.Width}x{bitmap.Height}");
                     return (0, 0);
                 }
-
-                _logger.LogInformation($"Bitmap: {bitmap.Width}x{bitmap.Height}");
                 
-                double scale = Math.Min(1.0, _maxRowHeight / bitmap.Height);
-                _logger.LogInformation($"MRH: {_maxRowHeight}");
+                //1.3 коэффициент для пикселей (1 единица высоты в excel = 1.(3) пикселя)
+                double scale = (double)_maxRowHeight*1.3 / bitmap.Height;
                 int newWidth = (int)(bitmap.Width * scale);
                 int newHeight = (int)(bitmap.Height * scale);
 
-                _logger.LogInformation($"New Bitmap: {newWidth}x{newHeight}");
+                //_logger.LogInformation($"New Bitmap: {newWidth}x{newHeight}");
 
                 // Вставка изображения из нового потока
                 using (var insertStream = new MemoryStream(imageBytes))

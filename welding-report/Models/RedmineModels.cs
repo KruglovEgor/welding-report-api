@@ -11,8 +11,12 @@ namespace welding_report.Models
 
     public class JointGroup
     {
+        public int ActParagraph { get; set; }
+        public string EquipmentType { get; set; }
+        public string PipelineNumber { get; set; }
         public double DiameterMm { get; set; }
         public double DiameterInches { get; set; }
+        
         public List<JointEntry> Entries { get; set; } = new();
     }
 

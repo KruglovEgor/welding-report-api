@@ -75,7 +75,7 @@ namespace welding_report.Services
             {
                 var group = new JointGroup();
 
-                // Парсинг диаметра и дюймажа
+                // Парсинг данных для стыка
                 foreach (var field in child.CustomFields)
                 {
                     if (field.Name == "Наружный диаметр")
@@ -92,15 +92,36 @@ namespace welding_report.Services
                     if (field.Name == "Дюймы_ФАКТ")
                     {
                         var stringValue = field.Value.GetString();
-
-
                         if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                         {
                             group.DiameterInches = parsedValue;
                             _logger.LogInformation($"Parsed Inches: {group.DiameterInches}");
                         }
                     }
-                        
+
+                    if (field.Name == "Пункт акта")
+                    {
+                        var stringValue = field.Value.GetString();
+
+                        if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
+                        {
+                            group.ActParagraph = parsedValue;
+                            _logger.LogInformation($"Parsed ActParagraph: {group.ActParagraph}");
+                        }
+                    }
+
+                    if (field.Name == "Тип оборудования")
+                    {
+                        group.EquipmentType = field.Value.GetString();
+                        _logger.LogInformation($"Parsed EquipmentType: {group.EquipmentType}");
+                    }
+
+                    if (field.Name == "№ трубопровода/аппарата")
+                    {
+                        group.PipelineNumber = field.Value.GetString();
+                        _logger.LogInformation($"Parsed PipelineNumber: {group.PipelineNumber}");
+                    }
+
 
                 }
 

@@ -74,19 +74,19 @@ public class WeldingReportController : ControllerBase
         try
         {
             // Получение родительского акта
-            var parentResponse = await _redmineService.GetIssueAsync<dynamic>(issueId);
-            if (parentResponse?.GetProperty("issue").GetProperty("id").GetInt32() != issueId)
-                return NotFound("Акт не найден");
-
-            //if (parentResponse?.Issue == null)
+            var parentResponse = await _redmineService.GetIssueAsync<RedmineIssueResponse>(issueId);
+            //if (parentResponse?.GetProperty("issue").GetProperty("id").GetInt32() != issueId)
             //    return NotFound("Акт не найден");
+
+            if (parentResponse?.Issue == null)
+                return NotFound("Акт не найден");
 
 
             // Получение дочерних групп стыков
-            var childrenResponse = await _redmineService.GetChildIssuesAsync<dynamic>(issueId);
+            var childrenResponse = await _redmineService.GetChildIssuesAsync<RedmineIssueListResponse>(issueId);
             var children = new List<object>();
 
-            foreach (var child in childrenResponse?.GetProperty("issues").EnumerateArray())
+            foreach (var child in childrenResponse.Issues)
             {
                 children.Add(child);
             }
@@ -165,26 +165,5 @@ public class WeldingReportController : ControllerBase
         }
 
         return photoMap;
-    }
-
-    // Работает только для docker. В локалке - нет
-    private void CleanupFiles(Dictionary<string, string> photoMap)
-    {
-        foreach (var path in photoMap.Values)
-            {
-                try
-                {
-                    if (System.IO.File.Exists(path))
-                    {
-                        System.IO.File.Delete(path);
-                        _logger.LogInformation($"Deleted temporary file: {path}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Error deleting file: {path}");
-                }
-            }
-        
     }
 }

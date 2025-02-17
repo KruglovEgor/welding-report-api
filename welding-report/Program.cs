@@ -37,14 +37,7 @@ builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSet
 builder.Services.Configure<RedmineSettings>(builder.Configuration.GetSection("RedmineSettings"));
 builder.Services.AddHttpClient<IRedmineService, RedmineService>();
 
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Welding Report API", Version = "v1" });
-    // Добавляем поддержку multipart/form-data
-    c.OperationFilter<welding_report.Models.FormDataOperationFilter>();
-    // Включаем аннотации
-    c.EnableAnnotations();
-}); 
+builder.Services.AddSwaggerGen(); 
 
 
 // Установите лицензионный контекст
