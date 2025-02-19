@@ -5,10 +5,8 @@
     using SkiaSharp;
     using System.Drawing;
     using Microsoft.Extensions.Options;
-    using static System.Runtime.InteropServices.JavaScript.JSType;
     using System.Net;
     using OfficeOpenXml.Style;
-    using System.Data.Common;
 
     public interface IExcelReportGenerator
     {
@@ -58,6 +56,8 @@
 
                     // Вставка фото
                     double currentWidth = 5;
+                    double currentHeight = 5;
+                    int rowHeight = _maxRowHeight;
                     int photoColumn = 10;
 
                     foreach (var photoUrl in entry.PhotoUrls)
@@ -86,9 +86,19 @@
                             byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
 
                             using var imageStream = new MemoryStream(imageBytes);
-                            var imgSize = InsertImage(worksheet, row, photoColumn, imageStream, currentWidth);
+                            var imgInfo = InsertImage(worksheet, row, photoColumn, imageStream, currentWidth, currentHeight);
 
-                            currentWidth += imgSize.width + 5;
+                            if (imgInfo.isNewRow)
+                            {
+                                rowHeight += _maxRowHeight + 5;
+                                currentHeight += imgInfo.height + 5;
+                                currentWidth = imgInfo.width + 5;
+                            }
+                            else
+                            {
+                                currentWidth += imgInfo.width + 5;
+                            }
+                                
                         }
                         catch (Exception ex)
                         {
@@ -97,8 +107,9 @@
                     }
 
                     // Настройка размеров строки и столбца
-                    worksheet.Row(row).Height = _maxRowHeight+5;
-                    worksheet.Column(photoColumn).Width = Math.Max(currentWidth / 7.0, worksheet.Column(photoColumn).Width);
+                    worksheet.Row(row).Height = rowHeight+5;
+                    //worksheet.Column(photoColumn).Width = Math.Max(currentWidth / 7.0, worksheet.Column(photoColumn).Width);
+                    worksheet.Column(photoColumn).Width = _maxPhotoColumnWidth;
 
                     // Границы ячеек
                     var range = worksheet.Cells[row, 1, row, photoColumn];
@@ -131,13 +142,15 @@
 
 
         // Метод для расчёта размеров
-        private (double width, double height) InsertImage(
+        private (double width, double height, bool isNewRow) InsertImage(
             ExcelWorksheet worksheet,
             int row,
             int column,
             Stream imageStream,
-            double xOffset)
+            double xOffset,
+            double yOffset)
         {
+            bool isNewRow = false;
             // Создаем копию потока для расчета размеров
             byte[] imageBytes;
             using (var tempStream = new MemoryStream())
@@ -156,13 +169,22 @@
                 if (bitmap.Height == 0 || bitmap.Width == 0)
                 {
                     _logger.LogError($"Нулевые размеры изображения: {bitmap.Width}x{bitmap.Height}");
-                    return (0, 0);
+                    return (0, 0, isNewRow);
                 }
                 
                 //1.3 коэффициент для пикселей (1 единица высоты в excel = 1.(3) пикселя)
                 double scale = (double)_maxRowHeight*1.3 / bitmap.Height;
                 int newWidth = (int)(bitmap.Width * scale);
                 int newHeight = (int)(bitmap.Height * scale);
+
+                _logger.LogInformation($"xOf: {xOffset}, newWid: {newWidth}, value: {(xOffset + newWidth) / 7.0}, maxWid: {_maxPhotoColumnWidth}");
+
+                if ((xOffset+newWidth)/7.0 > _maxPhotoColumnWidth)
+                {
+                    isNewRow = true;
+                    yOffset += newHeight + 5;
+                    xOffset = 5;
+                }
 
                 //_logger.LogInformation($"New Bitmap: {newWidth}x{newHeight}");
 
@@ -177,7 +199,7 @@
                     // Упрощенное позиционирование (в пикселях)
                     picture.SetPosition(
                         row - 1,      // Строка
-                        5,            // Смещение Y (в пикселях)
+                        (int)yOffset, // Смещение Y (в пикселях)
                         column - 1,   // Колонка
                         (int)xOffset  // Смещение X (в пикселях)
                     );
@@ -185,7 +207,7 @@
                     picture.SetSize(newWidth, newHeight);
                 }
 
-                return (newWidth, newHeight);
+                return (newWidth, newHeight, isNewRow);
             }
         }
     }
