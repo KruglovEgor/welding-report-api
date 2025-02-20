@@ -3,10 +3,11 @@
     using OfficeOpenXml;
     using welding_report.Models;
     using SkiaSharp;
-    using System.Drawing;
     using Microsoft.Extensions.Options;
-    using System.Net;
     using OfficeOpenXml.Style;
+    using System.Drawing;
+    using System;
+    using System.Net;
 
     public interface IExcelReportGenerator
     {
@@ -38,52 +39,53 @@
             using var package = new ExcelPackage(templateFile);
             var worksheet = package.Workbook.Worksheets[_worksheetName];
 
+            worksheet.Cells[2, 1].Value += " " + data.ReportNumber;
+            worksheet.Cells[2, 6].Value = data.JointsCount;
+
             int row = 3;
+            int photoColumn = 10;
+            worksheet.Column(photoColumn).Width = _maxPhotoColumnWidth;
+
             foreach (var group in data.Groups)
             {
                 var groupStartRow = row;
 
+                worksheet.Cells[row, 1].Value = data.ReportNumber;
+                worksheet.Cells[row, 2].Value = group.ActParagraph;
+                worksheet.Cells[row, 3].Value = group.EquipmentType;
+                worksheet.Cells[row, 4].Value = group.PipelineNumber;
+
+                worksheet.Cells[row, 7].Value = group.DiameterMm;
+                worksheet.Cells[row, 9].Value = group.DiameterInches;
+
+                // Устанавливаем фон для второй колонки (EquipmentType)
+                var equipmentCell = worksheet.Cells[row, 3];
+                equipmentCell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                equipmentCell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(214, 220, 228));
+
                 foreach (var entry in group.Entries)
                 {
-                    worksheet.Cells[row, 1].Value = data.ReportNumber;
-                    worksheet.Cells[row, 2].Value = group.ActParagraph;
-                    worksheet.Cells[row, 3].Value = group.EquipmentType;
-                    worksheet.Cells[row, 4].Value = group.PipelineNumber;
+                    // Собираем все стыки и фото в правильном порядке
+                    var sortedJoints = string.Join(", ", entry.JointPhotoMap.Keys);
+                    var allPhotos = entry.JointPhotoMap.Values.SelectMany(urls => urls).ToList();
+
                     worksheet.Cells[row, 5].Value = entry.Contractor;
-                    worksheet.Cells[row, 6].Value = entry.JointNumbers;
-                    worksheet.Cells[row, 7].Value = group.DiameterMm;
-                    worksheet.Cells[row, 9].Value = group.DiameterInches;
+                    worksheet.Cells[row, 6].Value = sortedJoints;
+                    
 
                     // Вставка фото
                     double currentWidth = 5;
                     double currentHeight = 5;
                     int rowHeight = _maxRowHeight;
-                    int photoColumn = 10;
 
-                    foreach (var photoUrl in entry.PhotoUrls)
+                    foreach (var photoUrl in allPhotos)
                     {
                         try
                         {
-                            _logger.LogInformation($"{entry.JointNumbers.ToString()} - {photoUrl}");
-                            //using var webClient = new WebClient();
-                            //byte[] imageBytes = webClient.DownloadData(photoUrl);
+                            _logger.LogInformation($"{sortedJoints} - {photoUrl}");
 
-                            using var httpClient = new HttpClient();
-                            var response = await httpClient.GetAsync(photoUrl);
-                            if (!response.IsSuccessStatusCode)
-                            {
-                                _logger.LogError($"Ошибка HTTP: {response.StatusCode} для {photoUrl}");
-                                continue;
-                            }
-
-                            // Проверка MIME-типа
-                            if (!response.Content.Headers.ContentType.MediaType.StartsWith("image/"))
-                            {
-                                _logger.LogError($"Недопустимый MIME-тип: {response.Content.Headers.ContentType}");
-                                continue;
-                            }
-
-                            byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
+                            using var webClient = new WebClient();
+                            byte[] imageBytes = webClient.DownloadData(photoUrl);
 
                             using var imageStream = new MemoryStream(imageBytes);
                             var imgInfo = InsertImage(worksheet, row, photoColumn, imageStream, currentWidth, currentHeight);
@@ -92,7 +94,7 @@
                             {
                                 rowHeight += _maxRowHeight + 5;
                                 currentHeight += imgInfo.height + 5;
-                                currentWidth = imgInfo.width + 5;
+                                currentWidth = 5 + imgInfo.width + 5;
                             }
                             else
                             {
@@ -108,8 +110,7 @@
 
                     // Настройка размеров строки и столбца
                     worksheet.Row(row).Height = rowHeight+5;
-                    //worksheet.Column(photoColumn).Width = Math.Max(currentWidth / 7.0, worksheet.Column(photoColumn).Width);
-                    worksheet.Column(photoColumn).Width = _maxPhotoColumnWidth;
+                    
 
                     // Границы ячеек
                     var range = worksheet.Cells[row, 1, row, photoColumn];
@@ -129,7 +130,7 @@
                     worksheet.Cells[groupStartRow, 3, row - 1, 3].Merge = true;
                     worksheet.Cells[groupStartRow, 4, row - 1, 4].Merge = true;
                     
-                    worksheet.Cells[groupStartRow, 6, row - 1, 7].Merge = true;
+                    worksheet.Cells[groupStartRow, 7, row - 1, 7].Merge = true;
                     worksheet.Cells[groupStartRow, 8, row - 1, 8].Merge = true;
                     worksheet.Cells[groupStartRow, 9, row - 1, 9].Merge = true;
 

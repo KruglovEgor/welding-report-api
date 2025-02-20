@@ -1,11 +1,13 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace welding_report.Models
 {
     public class RedmineReportData
     {
         public string ReportNumber { get; set; }
+        public int JointsCount { get; set; }
         public List<JointGroup> Groups { get; set; } = new();
     }
 
@@ -23,8 +25,25 @@ namespace welding_report.Models
     public class JointEntry
     {
         public string Contractor { get; set; }
-        public string JointNumbers { get; set; }
-        public List<string> PhotoUrls { get; set; } = new();
+        public SortedDictionary<string, List<string>> JointPhotoMap { get; set; }
+            = new SortedDictionary<string, List<string>>(new JointNumbersComparer());
+
+    }
+
+    public class JointNumbersComparer : IComparer<string>
+    {
+        public int Compare(string x, string y)
+        {
+            int firstX = ExtractFirstNumber(x);
+            int firstY = ExtractFirstNumber(y);
+            return firstX.CompareTo(firstY);
+        }
+
+        private static int ExtractFirstNumber(string input)
+        {
+            var match = Regex.Match(input, @"^\D*(\d+)");
+            return match.Success ? int.Parse(match.Groups[1].Value) : int.MaxValue;
+        }
     }
 
     public class RedmineIssueResponse
@@ -37,6 +56,9 @@ namespace welding_report.Models
     {
         [JsonPropertyName("subject")]
         public string Subject { get; set; }
+
+        [JsonPropertyName("custom_fields")]
+        public List<RedmineCustomField> CustomFields { get; set; }
     }
 
     public class RedmineIssueListResponse

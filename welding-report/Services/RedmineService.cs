@@ -2,7 +2,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using welding_report.Models;
-using System.Linq;
 using System.Globalization;
 
 
@@ -65,8 +64,21 @@ namespace welding_report.Services
 
             reportData.ReportNumber = parentResponse.Issue.Subject;
 
-            // Получение дочерних задач
-            var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineIssueListResponse>($"issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
+            foreach (var field in parentResponse.Issue.CustomFields)
+            {
+                if (field.Name == "Количество стыков")
+                {
+                    var stringValue = field.Value.GetString();
+                    if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
+                    {
+                        reportData.JointsCount = parsedValue;
+                        _logger.LogInformation($"Parsed JointsCount: {reportData.JointsCount}");
+                    }
+                }
+            }
+
+                // Получение дочерних задач
+                var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineIssueListResponse>($"issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
             if (childrenResponse?.Issues == null)
                 return reportData;
             
@@ -143,11 +155,15 @@ namespace welding_report.Services
                             entries[contractor] = entry;
                         }
 
-                        entry.JointNumbers = string.IsNullOrEmpty(entry.JointNumbers)
-                            ? joints
-                            : $"{entry.JointNumbers}, {joints}";
-
-                        entry.PhotoUrls.Add(attachment.ContentUrl);
+                        // Проверка существующей записи
+                        if (entry.JointPhotoMap.TryGetValue(joints, out var photoList))
+                        {
+                            photoList.Add(attachment.ContentUrl);
+                        }
+                        else
+                        {
+                            entry.JointPhotoMap[joints] = new List<string> { attachment.ContentUrl };
+                        }
                     }
                     catch { /* Игнорируем битые вложения */ }
                 }

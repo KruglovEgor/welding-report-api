@@ -67,48 +67,6 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-    [HttpGet("redmine-test/{issueId}")]
-    [SwaggerOperation(Summary = "Тест авторизации и получения данных из Redmine")]
-    public async Task<IActionResult> TestRedmineAuth(int issueId)
-    {
-        try
-        {
-            // Получение родительского акта
-            var parentResponse = await _redmineService.GetIssueAsync<RedmineIssueResponse>(issueId);
-            //if (parentResponse?.GetProperty("issue").GetProperty("id").GetInt32() != issueId)
-            //    return NotFound("Акт не найден");
-
-            if (parentResponse?.Issue == null)
-                return NotFound("Акт не найден");
-
-
-            // Получение дочерних групп стыков
-            var childrenResponse = await _redmineService.GetChildIssuesAsync<RedmineIssueListResponse>(issueId);
-            var children = new List<object>();
-
-            foreach (var child in childrenResponse.Issues)
-            {
-                children.Add(child);
-            }
-
-
-            // Формирование ответа
-            var result = new
-            {
-                Parent = parentResponse,
-                Children = children
-            };
-
-            return Ok(result);
-
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Ошибка запроса к Redmine");
-            return StatusCode(500, $"Ошибка: {ex.Message}");
-        }
-    }
-
     [HttpPost("generate-from-redmine/{issueId}")]
     public async Task<IActionResult> GenerateFromRedmine(int issueId)
     {
@@ -142,28 +100,5 @@ public class WeldingReportController : ControllerBase
     private bool IsValidEmail(string email)
     {
         return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-    }
-
-    private async Task<Dictionary<string, string>> SavePhotos(List<IFormFile> photos)
-    {
-        var uploadsPath = Path.Combine(_env.ContentRootPath, UploadsFolder);
-        Directory.CreateDirectory(uploadsPath);
-
-        var photoMap = new Dictionary<string, string>();
-
-        foreach (var photo in photos)
-        {
-            if (photo.Length == 0) continue;
-
-            var safeFileName = $"{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
-            var filePath = Path.Combine(uploadsPath, safeFileName);
-
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await photo.CopyToAsync(stream);
-
-            photoMap[photo.FileName] = filePath;
-        }
-
-        return photoMap;
     }
 }
