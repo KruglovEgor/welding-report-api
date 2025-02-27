@@ -1,13 +1,17 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace welding_report.Models
 {
     public class RedmineReportData
     {
         public string ReportNumber { get; set; }
-        public int JointsCount { get; set; }
+        public int JointsCountFact { get; set; }
+        public int JointsCountPlan { get; set; }
+        public double DiametrInchesFact { get; set; }
+        public double DiametrInchesPlan { get; set; }
         public List<JointGroup> Groups { get; set; } = new();
     }
 
@@ -18,7 +22,7 @@ namespace welding_report.Models
         public string PipelineNumber { get; set; }
         public double DiameterMm { get; set; }
         public double DiameterInches { get; set; }
-        
+        public int JointsCount { get; set; }
         public List<JointEntry> Entries { get; set; } = new();
     }
 

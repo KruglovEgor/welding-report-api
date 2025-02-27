@@ -67,12 +67,14 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-    [HttpPost("generate-from-redmine/{issueId}")]
-    public async Task<IActionResult> GenerateFromRedmine(int issueId)
+    [HttpPost("generate-issue-from-redmine")]
+    public async Task<IActionResult> GenerateIssueFromRedmine(
+        [FromForm] int issueId,
+        [FromForm] string projectName)
     {
         try
         {
-            var reportData = await _redmineService.GetReportDataAsync(issueId);
+            var reportData = await _redmineService.GetReportDataAsync(projectName, issueId);
             var excelBytes = await _excelGenerator.GenerateReport(reportData);
 
             // Сохранение отчета
@@ -96,6 +98,36 @@ public class WeldingReportController : ControllerBase
             return StatusCode(500, ex.Message);
         }
     }
+
+    //[HttpPost("generate-project-from-redmine/{issueId}")]
+    //public async Task<IActionResult> GenerateProjectFromRedmine(int issueId)
+    //{
+    //    try
+    //    {
+    //        var reportData = await _redmineService.GetReportDataAsync(issueId);
+    //        var excelBytes = await _excelGenerator.GenerateReport(reportData);
+
+    //        // Сохранение отчета
+    //        var reportPath = Path.Combine(
+    //            _env.ContentRootPath,
+    //            _appSettings.ReportStoragePath,
+    //            $"{reportData.ReportNumber}.xlsx"
+    //        );
+    //        Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+    //        await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
+
+    //        return File(
+    //            excelBytes,
+    //            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    //            $"{reportData.ReportNumber}.xlsx"
+    //        );
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        _logger.LogError(ex, "Ошибка генерации отчета");
+    //        return StatusCode(500, ex.Message);
+    //    }
+    //}
 
     private bool IsValidEmail(string email)
     {

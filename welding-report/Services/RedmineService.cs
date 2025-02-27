@@ -9,9 +9,9 @@ namespace welding_report.Services
 {
     public interface IRedmineService
     {
-        Task<T> GetIssueAsync<T>(int issueId);
-        Task<T> GetChildIssuesAsync<T>(int parentId);
-        Task<RedmineReportData> GetReportDataAsync(int parentIssueId);
+        Task<T> GetIssueAsync<T>(string projectName, int issueId);
+        Task<T> GetChildIssuesAsync<T>(string projectName, int parentId);
+        Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId);
     }
 
     public class RedmineService : IRedmineService
@@ -37,7 +37,7 @@ namespace welding_report.Services
             _logger = logger;
         }
 
-        public async Task<T> GetIssueAsync<T>(int issueId)
+        public async Task<T> GetIssueAsync<T>(string projectName, int issueId)
         {
             var response = await _httpClient.GetAsync($"issues/{issueId}.json");
             response.EnsureSuccessStatusCode();
@@ -45,15 +45,15 @@ namespace welding_report.Services
             return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
         }
 
-        public async Task<T> GetChildIssuesAsync<T>(int parentId)
+        public async Task<T> GetChildIssuesAsync<T>(string projectName, int parentId)
         {
-            var response = await _httpClient.GetAsync($"issues.json?parent_id={parentId}&status_id=*&include=attachments");
+            var response = await _httpClient.GetAsync($"projects/{projectName}/issues.json?parent_id={parentId}&status_id=*&include=attachments");
             response.EnsureSuccessStatusCode();
             //return await response.Content.ReadFromJsonAsync<T>();
             return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
         }
 
-        public async Task<RedmineReportData> GetReportDataAsync(int parentIssueId)
+        public async Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId)
         {
             var reportData = new RedmineReportData();
 
@@ -71,14 +71,34 @@ namespace welding_report.Services
                     var stringValue = field.Value.GetString();
                     if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                     {
-                        reportData.JointsCount = parsedValue;
-                        _logger.LogInformation($"Parsed JointsCount: {reportData.JointsCount}");
+                        reportData.JointsCountPlan = parsedValue;
+                        _logger.LogInformation($"Parsed JointsCountPlan: {reportData.JointsCountFact}");
+                    }
+                }
+
+                if (field.Name == "Дюймы_ПЛАН")
+                {
+                    var stringValue = field.Value.GetString();
+                    if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
+                    {
+                        reportData.DiametrInchesPlan = Math.Round(parsedValue, 2);
+                        _logger.LogInformation($"Parsed DiametrInchesPlan: {reportData.JointsCountFact}");
+                    }
+                }
+
+                if (field.Name == "Дюймы_ФАКТ")
+                {
+                    var stringValue = field.Value.GetString();
+                    if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
+                    {
+                        reportData.DiametrInchesFact = Math.Round(parsedValue, 2);
+                        _logger.LogInformation($"Parsed DiametrInchesFact: {reportData.JointsCountFact}");
                     }
                 }
             }
 
                 // Получение дочерних задач
-                var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineIssueListResponse>($"issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
+                var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineIssueListResponse>($"projects/{projectName}/issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
             if (childrenResponse?.Issues == null)
                 return reportData;
             
@@ -111,6 +131,7 @@ namespace welding_report.Services
                         }
                     }
 
+
                     if (field.Name == "Пункт акта")
                     {
                         var stringValue = field.Value.GetString();
@@ -134,7 +155,16 @@ namespace welding_report.Services
                         _logger.LogInformation($"Parsed PipelineNumber: {group.PipelineNumber}");
                     }
 
-
+                    if (field.Name == "Количество стыков")
+                    {
+                        var stringValue = field.Value.GetString();
+                        if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
+                        {
+                            group.JointsCount = parsedValue;
+                            reportData.JointsCountFact += parsedValue;
+                            _logger.LogInformation($"Parsed JointsCount: {group.DiameterInches}");
+                        }
+                    }
                 }
 
                 // Обработка вложений
@@ -169,6 +199,7 @@ namespace welding_report.Services
                 }
 
                 group.Entries = entries.Values.ToList();
+                _logger.LogInformation($"Entries: {entries.Values.ToList()}");
                 reportData.Groups.Add(group);
             }
 

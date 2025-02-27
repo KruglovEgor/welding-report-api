@@ -21,16 +21,19 @@
         private readonly int _maxRowHeight;
         private readonly ILogger<ExcelReportGenerator> _logger;
         private readonly int _maxPhotoColumnWidth;
+        private readonly RedmineSettings _settings;
 
         public ExcelReportGenerator(
             ILogger<ExcelReportGenerator> logger,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            IOptions<RedmineSettings> redmineSettings)
         {
             _logger = logger;
             _templatePath = appSettings.Value.TemplatePath;
             _worksheetName = appSettings.Value.WorksheetName;
             _maxRowHeight = appSettings.Value.MaxRowHeight;
             _maxPhotoColumnWidth = appSettings.Value.MaxPhotoColumnWidth;
+            _settings = redmineSettings.Value;
         }
 
         public async Task<byte[]> GenerateReport(RedmineReportData data)
@@ -40,7 +43,8 @@
             var worksheet = package.Workbook.Worksheets[_worksheetName];
 
             worksheet.Cells[2, 1].Value += " " + data.ReportNumber;
-            worksheet.Cells[2, 6].Value = data.JointsCount;
+            worksheet.Cells[2, 6].Value = $"{data.JointsCountFact} из {data.JointsCountPlan}";
+            worksheet.Cells[2, 9].Value = $"{data.DiametrInchesFact} из {data.DiametrInchesPlan}";
 
             int row = 3;
             int photoColumn = 10;
@@ -48,6 +52,7 @@
 
             foreach (var group in data.Groups)
             {
+                _logger.LogInformation($"Group: {group.ToString()}");
                 var groupStartRow = row;
 
                 worksheet.Cells[row, 1].Value = data.ReportNumber;
@@ -85,6 +90,11 @@
                             _logger.LogInformation($"{sortedJoints} - {photoUrl}");
 
                             using var webClient = new WebClient();
+                            // Добавляем заголовок с API-ключом (как в HttpClient)
+                            webClient.Headers.Add("X-Redmine-API-Key", _settings.ApiKey);
+
+                            // Устанавливаем Accept-заголовок для JSON (если требуется)
+                            webClient.Headers.Add(HttpRequestHeader.Accept, "application/json");
                             byte[] imageBytes = webClient.DownloadData(photoUrl);
 
                             using var imageStream = new MemoryStream(imageBytes);
