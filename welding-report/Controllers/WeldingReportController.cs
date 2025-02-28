@@ -13,7 +13,6 @@ public class WeldingReportController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<WeldingReportController> _logger;
     private readonly IExcelReportGenerator _excelGenerator;
-    private const string UploadsFolder = "uploads";
     private readonly IEmailService _emailService;
     private readonly AppSettings _appSettings;
     private readonly IRedmineService _redmineService;
@@ -69,8 +68,9 @@ public class WeldingReportController : ControllerBase
 
     [HttpPost("generate-issue-from-redmine")]
     public async Task<IActionResult> GenerateIssueFromRedmine(
-        [FromForm] int issueId,
-        [FromForm] string projectName)
+        [FromForm] int issueId = 6,
+        [FromForm] string projectName = "test_project",
+        [FromForm] bool sendMail = false)
     {
         try
         {
@@ -85,6 +85,12 @@ public class WeldingReportController : ControllerBase
             );
             Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
             await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
+
+            if (sendMail)
+            {
+                await _emailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber);
+            }
+
 
             return File(
                 excelBytes,

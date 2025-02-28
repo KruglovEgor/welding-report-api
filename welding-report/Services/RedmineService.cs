@@ -12,6 +12,7 @@ namespace welding_report.Services
         Task<T> GetIssueAsync<T>(string projectName, int issueId);
         Task<T> GetChildIssuesAsync<T>(string projectName, int parentId);
         Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId);
+        Task<RedmineAccountInfo> GetCurrentUserInfoAsync();
     }
 
     public class RedmineService : IRedmineService
@@ -206,5 +207,12 @@ namespace welding_report.Services
             return reportData;
         }
 
+
+        public async Task<RedmineAccountInfo> GetCurrentUserInfoAsync()
+        {
+            var response = await _httpClient.GetAsync("/my/account.json");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<RedmineAccountInfo>();
+        }
     }
 }
