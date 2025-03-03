@@ -75,7 +75,7 @@ public class WeldingReportController : ControllerBase
         try
         {
             var reportData = await _redmineService.GetReportDataAsync(projectName, issueId);
-            var excelBytes = await _excelGenerator.GenerateReport(reportData);
+            var excelBytes = await _excelGenerator.GenerateIssueReport(reportData);
 
             // Сохранение отчета
             var reportPath = Path.Combine(
@@ -105,35 +105,43 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-    //[HttpPost("generate-project-from-redmine/{issueId}")]
-    //public async Task<IActionResult> GenerateProjectFromRedmine(int issueId)
-    //{
-    //    try
-    //    {
-    //        var reportData = await _redmineService.GetReportDataAsync(issueId);
-    //        var excelBytes = await _excelGenerator.GenerateReport(reportData);
+    [HttpPost("generate-project-from-redmine")]
+    public async Task<IActionResult> GenerateProjectFromRedmine(
+        [FromForm] string projectName = "test_project",
+        [FromForm] bool sendMail = false)
+    {
+        try
+        {
+            var reportData = await _redmineService.GetProjectReportDataAsync(projectName);
+            var excelBytes = await _excelGenerator.GenerateProjectReport(reportData);
 
-    //        // Сохранение отчета
-    //        var reportPath = Path.Combine(
-    //            _env.ContentRootPath,
-    //            _appSettings.ReportStoragePath,
-    //            $"{reportData.ReportNumber}.xlsx"
-    //        );
-    //        Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
-    //        await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
+            // Сохранение отчета
+            var reportPath = Path.Combine(
+                _env.ContentRootPath,
+                _appSettings.ReportStoragePath,
+                $"{reportData.ProjectName}.xlsx"
+            );
 
-    //        return File(
-    //            excelBytes,
-    //            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    //            $"{reportData.ReportNumber}.xlsx"
-    //        );
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Ошибка генерации отчета");
-    //        return StatusCode(500, ex.Message);
-    //    }
-    //}
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+            await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
+
+            if (sendMail)
+            {
+                await _emailService.SendRedmineReportAsync(excelBytes, reportData.ProjectName);
+            }
+
+            return File(
+                excelBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"{reportData.ProjectName}.xlsx"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка генерации отчета");
+            return StatusCode(500, ex.Message);
+        }
+    }
 
     private bool IsValidEmail(string email)
     {

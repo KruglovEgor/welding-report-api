@@ -13,6 +13,7 @@ namespace welding_report.Services
         Task<T> GetChildIssuesAsync<T>(string projectName, int parentId);
         Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId);
         Task<RedmineAccountInfo> GetCurrentUserInfoAsync();
+        Task<ProjectReportData> GetProjectReportDataAsync(string projectName);
     }
 
     public class RedmineService : IRedmineService
@@ -99,7 +100,7 @@ namespace welding_report.Services
             }
 
                 // Получение дочерних задач
-                var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineIssueListResponse>($"projects/{projectName}/issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
+                var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineChildIssueListResponse>($"projects/{projectName}/issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
             if (childrenResponse?.Issues == null)
                 return reportData;
             
@@ -127,7 +128,7 @@ namespace welding_report.Services
                         var stringValue = field.Value.GetString();
                         if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                         {
-                            group.DiameterInches = parsedValue;
+                            group.DiameterInches = Math.Round(parsedValue, 2);
                             _logger.LogInformation($"Parsed Inches: {group.DiameterInches}");
                         }
                     }
@@ -207,6 +208,29 @@ namespace welding_report.Services
             return reportData;
         }
 
+
+        public async Task<ProjectReportData> GetProjectReportDataAsync(string projectName)
+        {
+            var projectReport = new ProjectReportData { ProjectName = projectName };
+
+            // Получаем все акты проекта (трекер ID=1)
+            var response = await _httpClient.GetAsync(
+                $"projects/{projectName}/issues.json?tracker_id=1&status_id=*"
+            );
+            response.EnsureSuccessStatusCode();
+
+            var issuesResponse = await response.Content.ReadFromJsonAsync<RedmineIssueListResponse>();
+            if (issuesResponse?.Issues == null) return projectReport;
+
+            // Для каждого акта собираем данные
+            foreach (var actIssue in issuesResponse.Issues)
+            {
+                var actData = await GetReportDataAsync(projectName, actIssue.Id);
+                projectReport.Acts.Add(actData);
+            }
+
+            return projectReport;
+        }
 
         public async Task<RedmineAccountInfo> GetCurrentUserInfoAsync()
         {

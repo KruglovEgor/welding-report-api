@@ -37,6 +37,7 @@ builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSet
 builder.Services.Configure<RedmineSettings>(builder.Configuration.GetSection("RedmineSettings"));
 builder.Services.AddHttpClient<IRedmineService, RedmineService>();
 
+
 builder.Services.AddSwaggerGen(); 
 
 

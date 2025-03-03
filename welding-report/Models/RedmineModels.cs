@@ -1,10 +1,15 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace welding_report.Models
 {
+    public class ProjectReportData
+    {
+        public string ProjectName { get; set; }
+        public List<RedmineReportData> Acts { get; set; } = new();
+    }
+
     public class RedmineReportData
     {
         public string ReportNumber { get; set; }
@@ -58,6 +63,9 @@ namespace welding_report.Models
 
     public class RedmineIssue
     {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
         [JsonPropertyName("subject")]
         public string Subject { get; set; }
 
@@ -66,6 +74,12 @@ namespace welding_report.Models
     }
 
     public class RedmineIssueListResponse
+    {
+        [JsonPropertyName("issues")]
+        public List<RedmineIssue> Issues { get; set; }
+    }
+
+    public class RedmineChildIssueListResponse
     {
         [JsonPropertyName("issues")]
         public List<RedmineChildIssue> Issues { get; set; }
