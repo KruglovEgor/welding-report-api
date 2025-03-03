@@ -107,19 +107,19 @@ public class WeldingReportController : ControllerBase
 
     [HttpPost("generate-project-from-redmine")]
     public async Task<IActionResult> GenerateProjectFromRedmine(
-        [FromForm] string projectName = "test_project",
+        [FromForm] string projectIdentifier = "test_project",
         [FromForm] bool sendMail = false)
     {
         try
         {
-            var reportData = await _redmineService.GetProjectReportDataAsync(projectName);
-            var excelBytes = await _excelGenerator.GenerateProjectReport(reportData);
+            var projectData = await _redmineService.GetProjectReportDataAsync(projectIdentifier);
+            var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
 
             // Сохранение отчета
             var reportPath = Path.Combine(
                 _env.ContentRootPath,
                 _appSettings.ReportStoragePath,
-                $"{reportData.ProjectName}.xlsx"
+                $"{projectData.Name}.xlsx"
             );
 
             Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
@@ -127,13 +127,13 @@ public class WeldingReportController : ControllerBase
 
             if (sendMail)
             {
-                await _emailService.SendRedmineReportAsync(excelBytes, reportData.ProjectName);
+                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name);
             }
 
             return File(
                 excelBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                $"{reportData.ProjectName}.xlsx"
+                $"{projectData.Name}.xlsx"
             );
         }
         catch (Exception ex)

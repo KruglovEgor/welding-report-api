@@ -83,16 +83,17 @@
         {
             try
             {
-                worksheet.Cells[row, 1].Value += $"Итого по акту: {data.ReportNumber}";
+                string resultValue = $"Итого по акту: {data.ReportNumber}";
+                worksheet.Cells[row, 1].Value = resultValue;
                 worksheet.Cells[row, 6].Value = $"{data.JointsCountFact} из {data.JointsCountPlan}";
                 worksheet.Cells[row, 9].Value = $"{data.DiametrInchesFact} из {data.DiametrInchesPlan}";
 
                 // Объединение ячеек
-                var mergedRange = worksheet.Cells[row, 1, row, 5];
-                mergedRange.Merge = true;
-                mergedRange.Style.WrapText = true; // Включаем перенос 
-                worksheet.Row(row).CustomHeight = false;
-                
+                var mergedCells = worksheet.Cells[row, 1, row, 5];
+                mergedCells.Merge = true;
+
+                // Включение переноса текста
+                mergedCells.Style.WrapText = true;
 
                 // Границы ячеек
                 var range = worksheet.Cells[row, 1, row, photoColumn];
@@ -102,6 +103,8 @@
                 range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
 
                 worksheet.Row(row).CustomHeight = false;
+                worksheet.Row(row).Height = CalculateRowHeight(worksheet, row, mergedCells);
+
                 return true;
             } catch (Exception e)
             {
@@ -109,6 +112,38 @@
                 return false;
             }
         }
+
+        private double CalculateRowHeight(ExcelWorksheet worksheet, int row, ExcelRange mergedCells)
+        {
+            double deafaultRowHeight = 14.4f;
+
+            string mergedValue = mergedCells.Text;
+            // Ширина объединенных ячеек в пикселях
+            double totalWidth = 0;
+            for (int col = mergedCells.Start.Column; col <= mergedCells.End.Column; col++)
+            {
+                totalWidth += worksheet.Column(col).Width;
+            }
+
+            double newHeight = Math.Ceiling(mergedValue.Length / totalWidth) * deafaultRowHeight;
+
+            for (int col = mergedCells.End.Column+1; col <= photoColumn; col++)
+            {
+                double columnWidth = worksheet.Column(col).Width;
+                var cell = worksheet.Cells[row, col];
+                string cellValue = cell.Text;
+
+                if (cellValue != null && cellValue.Length > 0)
+                {
+                    double cellHeight = Math.Ceiling(cellValue.Length / columnWidth) * deafaultRowHeight;
+                    newHeight = Math.Max(newHeight, cellHeight);
+                }
+            }
+
+            return newHeight;
+        }
+
+
 
         private int FillData(ExcelWorksheet worksheet, RedmineReportData data, int row)
         {

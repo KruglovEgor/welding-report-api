@@ -6,8 +6,22 @@ namespace welding_report.Models
 {
     public class ProjectReportData
     {
-        public string ProjectName { get; set; }
+        public string Name { get; set; }
+        public string Identifier { get; set; }
         public List<RedmineReportData> Acts { get; set; } = new();
+    }
+
+    public class RedmineProjectResponse
+    {
+        [JsonPropertyName("project")]
+        public RedmineProject Project { get; set; }
+    }
+
+    public class RedmineProject
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
     }
 
     public class RedmineReportData

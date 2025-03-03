@@ -209,13 +209,27 @@ namespace welding_report.Services
         }
 
 
-        public async Task<ProjectReportData> GetProjectReportDataAsync(string projectName)
+        public async Task<ProjectReportData> GetProjectReportDataAsync(string projectIdentifier)
         {
-            var projectReport = new ProjectReportData { ProjectName = projectName };
+            var projectReport = new ProjectReportData { Identifier = projectIdentifier };
 
+            var projectResponse = await _httpClient.GetAsync(
+                $"projects/{projectIdentifier}.json"
+            );
+
+            var parsedProjectResponse = await projectResponse.Content.ReadFromJsonAsync<RedmineProjectResponse>();
+            if (parsedProjectResponse?.Project?.Name != null)
+            {
+                projectReport.Name = parsedProjectResponse.Project.Name;
+            }
+            else
+            {
+                projectReport.Name = projectIdentifier;
+            }
+            
             // Получаем все акты проекта (трекер ID=1)
             var response = await _httpClient.GetAsync(
-                $"projects/{projectName}/issues.json?tracker_id=1&status_id=*"
+                $"projects/{projectIdentifier}/issues.json?tracker_id=1&status_id=*"
             );
             response.EnsureSuccessStatusCode();
 
@@ -225,7 +239,7 @@ namespace welding_report.Services
             // Для каждого акта собираем данные
             foreach (var actIssue in issuesResponse.Issues)
             {
-                var actData = await GetReportDataAsync(projectName, actIssue.Id);
+                var actData = await GetReportDataAsync(projectIdentifier, actIssue.Id);
                 projectReport.Acts.Add(actData);
             }
 

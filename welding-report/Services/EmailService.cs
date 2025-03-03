@@ -55,7 +55,7 @@ namespace welding_report.Services
 
 
         // Новый метод для отправки отчётов из Redmine
-        public async Task SendRedmineReportAsync(byte[] reportBytes, string name)
+        public async Task SendRedmineReportAsync(byte[] reportBytes, string nameOfFile)
         {
             // Получаем email пользователя из Redmine
             var userInfo = await _redmineService.GetCurrentUserInfoAsync();
@@ -70,7 +70,7 @@ namespace welding_report.Services
                 "Отчёт по сварке",
                 "Прикреплённый отчёт во вложении.",
                 reportBytes,
-                $"{name}.xlsx"
+                $"{nameOfFile}.xlsx"
             );
         }
     }
