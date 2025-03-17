@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using welding_report.Models;
 using System.Globalization;
+using System.Net.Http;
 
 
 namespace welding_report.Services
@@ -30,9 +31,13 @@ namespace welding_report.Services
             IOptions<RedmineSettings> redmineSettings,
             ILogger<RedmineService> logger)
         {
-            _httpClient = httpClient;
+            //_httpClient = httpClient;
             _settings = redmineSettings.Value;
             _logger = logger;
+
+            HttpClientHandler clientHandler = new HttpClientHandler();
+            clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+            _httpClient = new HttpClient(clientHandler);
         }
 
         private void SetHttpClient()
@@ -46,10 +51,11 @@ namespace welding_report.Services
             }
             else if (context == "request")
             {
+                _logger.LogInformation($"changed {_settings.RequestUrl}, {_settings.RequestApiKey}");
                 _httpClient.BaseAddress = new Uri(_settings.RequestUrl);
                 _httpClient.DefaultRequestHeaders.Accept.Add(
                     new MediaTypeWithQualityHeaderValue("application/json"));
-                _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _settings.RequestUrl);
+                _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _settings.RequestApiKey);
             }
         }
 

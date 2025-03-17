@@ -39,7 +39,7 @@ builder.Services.Configure<RedmineSettings>(builder.Configuration.GetSection("Re
 builder.Services.AddHttpClient<IRedmineService, RedmineService>();
 
 
-builder.Services.AddSwaggerGen(); 
+builder.Services.AddSwaggerGen();
 
 
 // Установите лицензионный контекст
