@@ -9,8 +9,8 @@ namespace welding_report.Services
 {
     public interface IRedmineService
     {
-        Task<T> GetIssueAsync<T>(string projectName, int issueId);
-        Task<T> GetChildIssuesAsync<T>(string projectName, int parentId);
+        //Task<T> GetIssueAsync<T>(string projectName, int issueId);
+        //Task<T> GetChildIssuesAsync<T>(string projectName, int parentId);
         Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId);
         Task<RedmineAccountInfo> GetCurrentUserInfoAsync();
         Task<ProjectReportData> GetProjectReportDataAsync(string projectName);
@@ -21,6 +21,7 @@ namespace welding_report.Services
         private readonly HttpClient _httpClient;
         private readonly RedmineSettings _settings;
         private readonly ILogger<RedmineService> _logger;
+        private string context;
 
         public RedmineService(
             HttpClient httpClient,
@@ -30,33 +31,51 @@ namespace welding_report.Services
             _httpClient = httpClient;
             _settings = redmineSettings.Value;
             _logger = logger;
-
-            // Настройка базового URL и заголовков
-            _httpClient.BaseAddress = new Uri(_settings.BaseUrl);
-            _httpClient.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/json"));
-            _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _settings.ApiKey);
-            _logger = logger;
         }
 
-        public async Task<T> GetIssueAsync<T>(string projectName, int issueId)
+        private void SetHttpClient()
         {
-            var response = await _httpClient.GetAsync($"issues/{issueId}.json");
-            response.EnsureSuccessStatusCode();
-            //return await response.Content.ReadFromJsonAsync<T>();
-            return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
+            if (context == "welding")
+            {
+                _httpClient.BaseAddress = new Uri(_settings.WeldingUrl);
+                _httpClient.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/json"));
+                _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _settings.WeldingApiKey);
+            }
+            else if (context == "request")
+            {
+                _httpClient.BaseAddress = new Uri(_settings.RequestUrl);
+                _httpClient.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/json"));
+                _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _settings.RequestUrl);
+            }
         }
 
-        public async Task<T> GetChildIssuesAsync<T>(string projectName, int parentId)
-        {
-            var response = await _httpClient.GetAsync($"projects/{projectName}/issues.json?parent_id={parentId}&status_id=*&include=attachments");
-            response.EnsureSuccessStatusCode();
-            //return await response.Content.ReadFromJsonAsync<T>();
-            return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
-        }
+
+        //public async Task<T> GetIssueAsync<T>(string projectName, int issueId)
+        //{
+        //    var response = await _httpClient.GetAsync($"issues/{issueId}.json");
+        //    response.EnsureSuccessStatusCode();
+        //    //return await response.Content.ReadFromJsonAsync<T>();
+        //    return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
+        //}
+
+        //public async Task<T> GetChildIssuesAsync<T>(string projectName, int parentId)
+        //{
+        //    var response = await _httpClient.GetAsync($"projects/{projectName}/issues.json?parent_id={parentId}&status_id=*&include=attachments");
+        //    response.EnsureSuccessStatusCode();
+        //    //return await response.Content.ReadFromJsonAsync<T>();
+        //    return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
+        //}
+
 
         public async Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId)
         {
+            if (context != "welding")
+            {
+                context = "welding";
+                SetHttpClient();
+            }
             var reportData = new RedmineReportData();
 
             // Получение данных родительского акта
@@ -211,6 +230,12 @@ namespace welding_report.Services
 
         public async Task<ProjectReportData> GetProjectReportDataAsync(string projectIdentifier)
         {
+            if (context != "welding")
+            {
+                context = "welding";
+                SetHttpClient();
+            }
+
             var projectReport = new ProjectReportData { Identifier = projectIdentifier };
 
             var projectResponse = await _httpClient.GetAsync(
@@ -248,9 +273,16 @@ namespace welding_report.Services
 
         public async Task<RedmineAccountInfo> GetCurrentUserInfoAsync()
         {
+            if (context != "welding")
+            {
+                context = "welding";
+                SetHttpClient();
+            }
             var response = await _httpClient.GetAsync("/my/account.json");
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<RedmineAccountInfo>();
         }
+
+
     }
 }

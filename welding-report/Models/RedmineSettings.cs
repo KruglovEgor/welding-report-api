@@ -4,8 +4,11 @@ namespace welding_report.Models
 {
     public class RedmineSettings
     {
-        public string BaseUrl { get; set; }
-        public string ApiKey { get; set; }
+        public string WeldingUrl { get; set; }
+        public string WeldingApiKey { get; set; }
+        public string RequestUrl { get; set; }
+        public string RequestApiKey { get; set; }
+
     }
 
     public class RedmineAccountInfo

@@ -44,7 +44,7 @@
             _maxPhotoColumnWidth = appSettings.Value.MaxPhotoColumnWidth;
             _settings = redmineSettings.Value;
             // Добавляем заголовок с API-ключом (как в HttpClient)
-            webClient.Headers.Add("X-Redmine-API-Key", _settings.ApiKey);
+            webClient.Headers.Add("X-Redmine-API-Key", _settings.WeldingApiKey);
         }
 
         public async Task<byte[]> GenerateIssueReport(RedmineReportData data)
