@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using welding_report.Models;
 using System.Globalization;
-using System.Net.Http;
 
 
 namespace welding_report.Services
@@ -15,8 +14,10 @@ namespace welding_report.Services
         Task<WeldingReportData> GetReportDataAsync(string projectName, int parentIssueId);
         Task<AccountInfo> GetCurrentUserInfoAsync();
         Task<WeldingProjectReportData> GetProjectReportDataAsync(string projectName);
-
         Task<RequestReportData> GetRequestReportDataAsync(int issueId);
+        void SetApiKey(string apiKey);
+        void SetContext(string context);
+        void SetHttpClient();
     }
 
     public class RedmineService : IRedmineService
@@ -24,7 +25,9 @@ namespace welding_report.Services
         private readonly HttpClient _httpClient;
         private readonly RedmineSettings _settings;
         private readonly ILogger<RedmineService> _logger;
-        private string context;
+
+        private string _apiKey;
+        private string _context;
 
         public RedmineService(
             HttpClient httpClient,
@@ -32,6 +35,7 @@ namespace welding_report.Services
             ILogger<RedmineService> logger)
         {
             //_httpClient = httpClient;
+
             _settings = redmineSettings.Value;
             _logger = logger;
 
@@ -40,23 +44,29 @@ namespace welding_report.Services
             _httpClient = new HttpClient(clientHandler);
         }
 
-        private void SetHttpClient()
+        public void SetApiKey(string apiKey)
         {
-            if (context == "welding")
+            _apiKey = apiKey;
+        }
+
+        public void SetContext(string context)
+        {
+            _context = context;
+        }
+
+        public void SetHttpClient()
+        {
+            if (_context == "welding")
             {
                 _httpClient.BaseAddress = new Uri(_settings.WeldingUrl);
-                _httpClient.DefaultRequestHeaders.Accept.Add(
-                    new MediaTypeWithQualityHeaderValue("application/json"));
-                _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _settings.WeldingApiKey);
             }
-            else if (context == "request")
+            else if (_context == "request")
             {
-                _logger.LogInformation($"changed {_settings.RequestUrl}, {_settings.RequestApiKey}");
                 _httpClient.BaseAddress = new Uri(_settings.RequestUrl);
-                _httpClient.DefaultRequestHeaders.Accept.Add(
-                    new MediaTypeWithQualityHeaderValue("application/json"));
-                _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _settings.RequestApiKey);
             }
+            _httpClient.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/json"));
+            _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _apiKey);
         }
 
 
@@ -79,9 +89,9 @@ namespace welding_report.Services
 
         public async Task<RequestReportData> GetRequestReportDataAsync(int issueId)
         {
-            if (context != "request")
+            if (_context != "request")
             {
-                context = "request";
+                _context = "request";
                 SetHttpClient();
             }
 
@@ -187,9 +197,9 @@ namespace welding_report.Services
 
         public async Task<WeldingReportData> GetReportDataAsync(string projectName, int parentIssueId)
         {
-            if (context != "welding")
+            if (_context != "welding")
             {
-                context = "welding";
+                _context = "welding";
                 SetHttpClient();
             }
             var reportData = new WeldingReportData();
@@ -346,9 +356,9 @@ namespace welding_report.Services
 
         public async Task<WeldingProjectReportData> GetProjectReportDataAsync(string projectIdentifier)
         {
-            if (context != "welding")
+            if (_context != "welding")
             {
-                context = "welding";
+                _context = "welding";
                 SetHttpClient();
             }
 

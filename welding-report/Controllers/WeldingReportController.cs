@@ -1,5 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.Annotations;
@@ -17,6 +19,9 @@ public class WeldingReportController : ControllerBase
     private readonly AppSettings _appSettings;
     private readonly IRedmineService _redmineService;
     private readonly INumberToText _numberToText;
+    private readonly IRequestWordReportGenerator _wordReportGenerator;
+
+    private readonly RedmineSettings _redmineSettings;
 
     public WeldingReportController(
         IWebHostEnvironment env,
@@ -25,7 +30,9 @@ public class WeldingReportController : ControllerBase
         IEmailService emailService,
         IOptions<AppSettings> appSettings,
         IRedmineService redmineService,
-        INumberToText numberToText)
+        INumberToText numberToText,
+        IRequestWordReportGenerator wordReportGenerator
+        )
     {
         _env = env;
         _logger = logger;
@@ -34,53 +41,45 @@ public class WeldingReportController : ControllerBase
         _appSettings = appSettings.Value;
         _redmineService = redmineService;
         _numberToText = numberToText;
+        _wordReportGenerator = wordReportGenerator;
     }
-
-    //[HttpPost("send-report")]
-    //public async Task<IActionResult> SendReport(
-    //    [FromForm] string recipientEmail,
-    //    [FromForm] string reportNumber)
-    //{
-    //    try
-    //{
-    //        // Валидация email
-    //        if (!IsValidEmail(recipientEmail))
-    //            return BadRequest("Неверный формат email.");
-
-    //        // Поиск отчёта
-    //        var reportPath = Path.Combine(
-    //            _env.ContentRootPath,
-    //            _appSettings.ReportStoragePath,
-    //            $"{reportNumber}.xlsx"
-    //        );
-
-    //        if (!System.IO.File.Exists(reportPath))
-    //            return NotFound("Отчёт не найден.");
-
-    //        var attachment = await System.IO.File.ReadAllBytesAsync(reportPath);
-    //        await _emailService.SendReportAsync(recipientEmail, "Отчет по сварке", "Прикрепленный отчет во вложении.", attachment, $"{reportNumber}.xlsx");
-
-    //        return Ok("Отчет отправлен на email.");
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Ошибка при отправке отчета");
-    //        return StatusCode(500, "Ошибка сервера");
-    //    }
-    //}
 
     [HttpPost("generate-issue-from-request")]
     public async Task<IActionResult> GenerateIssueFromRequest(
         [FromForm] int issueId = 45,
-        [FromForm] string projectName = "portal_zayavok_2")
+        [FromForm] string apiKey = "secret"
+        //[FromForm] string projectName = "portal_zayavok_2"
+        )
     {
         try
         {
+            _redmineService.SetApiKey(apiKey);
             var reportData = await _redmineService.GetRequestReportDataAsync(issueId);
             _numberToText.FillCostText(reportData);
 
-            
-            return Ok(reportData);
+            if (string.IsNullOrEmpty(reportData.CuratorEmail))
+            {
+                _logger.LogWarning("CuratorEmail is empty for issue {IssueId}", issueId);
+            }
+
+            // Генерация документа
+            var docBytes = _wordReportGenerator.GenerateRequestReport(reportData);
+
+            // Сохранение файла
+            var reportPath = Path.Combine(
+                _env.ContentRootPath,
+               _appSettings.ReportStoragePath,
+                $"{reportData.Name}.docx"
+            );
+
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+            await System.IO.File.WriteAllBytesAsync(reportPath, docBytes);
+
+            return File(
+            docBytes,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            $"{reportData.Name}.docx"
+        );
         }
         catch (Exception ex)
         {
@@ -93,10 +92,13 @@ public class WeldingReportController : ControllerBase
     public async Task<IActionResult> GenerateIssueFromRedmine(
         [FromForm] int issueId = 6,
         [FromForm] string projectName = "test_project",
+        [FromForm] string apiKey = "secret",
         [FromForm] bool sendMail = false)
     {
         try
         {
+            _redmineService.SetApiKey(apiKey);
+            _excelGenerator.SetApiKey(apiKey);
             var reportData = await _redmineService.GetReportDataAsync(projectName, issueId);
             var excelBytes = await _excelGenerator.GenerateIssueReport(reportData);
 
@@ -111,7 +113,7 @@ public class WeldingReportController : ControllerBase
 
             if (sendMail)
             {
-                await _emailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber);
+                await _emailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber, apiKey, "welding");
             }
 
 
@@ -131,10 +133,13 @@ public class WeldingReportController : ControllerBase
     [HttpPost("generate-project-from-welding")]
     public async Task<IActionResult> GenerateProjectFromWelding(
         [FromForm] string projectIdentifier = "test_project",
+        [FromForm] string apiKey = "secret",
         [FromForm] bool sendMail = false)
     {
         try
         {
+            _redmineService.SetApiKey(apiKey);
+            _excelGenerator.SetApiKey(apiKey);
             var projectData = await _redmineService.GetProjectReportDataAsync(projectIdentifier);
             var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
 
@@ -150,7 +155,7 @@ public class WeldingReportController : ControllerBase
 
             if (sendMail)
             {
-                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name);
+                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name,  apiKey, "welding");
             }
 
             return File(
@@ -165,9 +170,4 @@ public class WeldingReportController : ControllerBase
             return StatusCode(500, ex.Message);
         }
     }
-
-    //private bool IsValidEmail(string email)
-    //{
-    //    return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-    //}
 }

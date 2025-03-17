@@ -8,7 +8,7 @@ namespace welding_report.Services
     public interface IEmailService
     {
         Task SendReportAsync(string recipientEmail, string subject, string body, byte[] attachment, string attachmentName);
-        Task SendRedmineReportAsync(byte[] reportBytes, string name); 
+        Task SendRedmineReportAsync(byte[] reportBytes, string name, string apiKey, string context); 
     }
 
 
@@ -55,8 +55,12 @@ namespace welding_report.Services
 
 
         // Новый метод для отправки отчётов из Redmine
-        public async Task SendRedmineReportAsync(byte[] reportBytes, string nameOfFile)
+        public async Task SendRedmineReportAsync(byte[] reportBytes, string nameOfFile, string apiKey, string context)
         {
+            _redmineService.SetApiKey(apiKey);
+            _redmineService.SetContext(context);
+            _redmineService.SetHttpClient();
+
             // Получаем email пользователя из Redmine
             var userInfo = await _redmineService.GetCurrentUserInfoAsync();
             if (string.IsNullOrEmpty(userInfo?.User?.Mail))

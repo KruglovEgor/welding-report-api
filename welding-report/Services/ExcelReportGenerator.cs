@@ -13,6 +13,8 @@
     {
         Task<byte[]> GenerateIssueReport(WeldingReportData data);
         Task<byte[]> GenerateProjectReport(WeldingProjectReportData data);
+        void SetApiKey(string apiKey);
+
     }
 
     public class ExcelReportGenerator : IExcelReportGenerator
@@ -22,29 +24,38 @@
         private readonly int _maxRowHeight;
         private readonly ILogger<ExcelReportGenerator> _logger;
         private readonly int _maxPhotoColumnWidth;
-        private readonly RedmineSettings _settings;
 
         private readonly int startRow = 2;
         private readonly int photoColumn = 10;
         private readonly int xGap = 5;
         private readonly int yGap = 5;
         private WebClient webClient = new();
-        
+
+        private string _apiKey;
 
 
         public ExcelReportGenerator(
             ILogger<ExcelReportGenerator> logger,
-            IOptions<AppSettings> appSettings,
-            IOptions<RedmineSettings> redmineSettings)
+            IOptions<AppSettings> appSettings
+            )
         {
             _logger = logger;
-            _templatePath = appSettings.Value.TemplatePath;
+            _templatePath = Path.Combine(
+                appSettings.Value.TemplatePath,
+                "WeldingReportTemplate.xlsx"
+                );
             _worksheetName = appSettings.Value.WorksheetName;
             _maxRowHeight = appSettings.Value.MaxRowHeight;
             _maxPhotoColumnWidth = appSettings.Value.MaxPhotoColumnWidth;
-            _settings = redmineSettings.Value;
+
+  
+        }
+
+        public void SetApiKey(string apiKey)
+        {
+            _apiKey = apiKey;
             // Добавляем заголовок с API-ключом (как в HttpClient)
-            webClient.Headers.Add("X-Redmine-API-Key", _settings.WeldingApiKey);
+            webClient.Headers.Add("X-Redmine-API-Key", _apiKey);
         }
 
         public async Task<byte[]> GenerateIssueReport(WeldingReportData data)
