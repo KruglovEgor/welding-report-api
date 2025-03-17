@@ -11,13 +11,13 @@ namespace welding_report.Models
 
     }
 
-    public class RedmineAccountInfo
+    public class AccountInfo
     {
         [JsonPropertyName("user")]
-        public RedmineUserInfo User { get; set; }
+        public UserInfo User { get; set; }
     }
 
-    public class RedmineUserInfo
+    public class UserInfo
     {
         [JsonPropertyName("firstname")]
         public string FirstName { get; set; }
@@ -27,4 +27,5 @@ namespace welding_report.Models
         [JsonPropertyName("mail")]
         public string Mail { get; set; }
     }
+
 }

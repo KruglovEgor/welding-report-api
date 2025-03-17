@@ -4,27 +4,27 @@ using System.Text.RegularExpressions;
 
 namespace welding_report.Models
 {
-    public class ProjectReportData
+    public class WeldingProjectReportData
     {
         public string Name { get; set; }
         public string Identifier { get; set; }
-        public List<RedmineReportData> Acts { get; set; } = new();
+        public List<WeldingReportData> Acts { get; set; } = new();
     }
 
-    public class RedmineProjectResponse
+    public class WeldingProjectResponse
     {
         [JsonPropertyName("project")]
-        public RedmineProject Project { get; set; }
+        public WeldingProject Project { get; set; }
     }
 
-    public class RedmineProject
+    public class WeldingProject
     {
         [JsonPropertyName("name")]
         public string Name { get; set; }
 
     }
 
-    public class RedmineReportData
+    public class WeldingReportData
     {
         public string ReportNumber { get; set; }
         public int JointsCountFact { get; set; }
@@ -69,13 +69,13 @@ namespace welding_report.Models
         }
     }
 
-    public class RedmineIssueResponse
+    public class WeldingIssueResponse
     {
         [JsonPropertyName("issue")]
-        public RedmineIssue Issue { get; set; }
+        public WeldingIssue Issue { get; set; }
     }
 
-    public class RedmineIssue
+    public class WeldingIssue
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
@@ -84,13 +84,13 @@ namespace welding_report.Models
         public string Subject { get; set; }
 
         [JsonPropertyName("custom_fields")]
-        public List<RedmineCustomField> CustomFields { get; set; }
+        public List<WeldingCustomField> CustomFields { get; set; }
     }
 
-    public class RedmineIssueListResponse
+    public class WeldingIssueListResponse
     {
         [JsonPropertyName("issues")]
-        public List<RedmineIssue> Issues { get; set; }
+        public List<WeldingIssue> Issues { get; set; }
     }
 
     public class RedmineChildIssueListResponse
@@ -102,13 +102,13 @@ namespace welding_report.Models
     public class RedmineChildIssue
     {
         [JsonPropertyName("custom_fields")]
-        public List<RedmineCustomField> CustomFields { get; set; }
+        public List<WeldingCustomField> CustomFields { get; set; }
 
         [JsonPropertyName("attachments")]
-        public List<RedmineAttachment> Attachments { get; set; }
+        public List<WeldingAttachment> Attachments { get; set; }
     }
 
-    public class RedmineCustomField
+    public class WeldingCustomField
     {
         [JsonPropertyName("name")]
         public string Name { get; set; }
@@ -117,12 +117,80 @@ namespace welding_report.Models
         public JsonElement Value { get; set; }
     }
 
-    public class RedmineAttachment
+    public class WeldingAttachment
     {
         [JsonPropertyName("description")]
         public string Description { get; set; }
 
         [JsonPropertyName("content_url")]
         public string ContentUrl { get; set; }
+    }
+
+
+
+    public class RequestIssueResponse
+    {
+        [JsonPropertyName("issue")]
+        public RequestIssue Issue { get; set; }
+    }
+
+    public class RequestIssue
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        //[JsonPropertyName("subject")]
+        //public string Subject { get; set; }
+
+        [JsonPropertyName("custom_fields")]
+        public List<RequestCustomField> CustomFields { get; set; }
+
+        [JsonPropertyName("tracker")]
+        public RequestTracker Tracker { get; set; }
+
+        [JsonPropertyName("start_date")]
+        public string StartDate { get; set; }
+    }
+
+    public class RequestCustomField
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("value")]
+        public JsonElement Value { get; set; }
+    }
+
+    public class RequestTracker
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+    }
+
+    public class RequestReportData
+    {
+        public string Name { get; set; }
+        public string CustomerName { get; set; }
+        //public string CustomerPosition { get; set; }
+        //public string CustomerPhone { get; set; }
+        public string CustomerEmail { get; set; }
+        public string Theme { get; set; }
+        public string Aim { get; set; }
+        public string RequestDate { get; set; }
+        public string CuratorName { get; set; }
+        //public string CuratorPosition { get; set; }
+        //public string CuratorPhone { get; set; }
+        public string CuratorEmail { get; set; }
+        public string PlanStartDateText { get; set; }
+        public string PlanEndDateText { get; set; }
+        public string Cost { get; set; }
+        public string CostText { get; set; }
+        public string OwnCost { get; set; }
+        public string SubCost { get; set; }
+        public string MaterialCost { get; set; }
+        public string OtherCost { get; set; }
     }
 }

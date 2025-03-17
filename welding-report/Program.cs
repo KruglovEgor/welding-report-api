@@ -29,6 +29,7 @@ Console.WriteLine($"Created directories:\nUploads: {uploadsPath}\nReports: {repo
 builder.Services.AddControllers();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IExcelReportGenerator, ExcelReportGenerator>();
+builder.Services.AddScoped<INumberToText, NumberToText>();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Configuration.AddUserSecrets<Program>();

@@ -11,9 +11,11 @@ namespace welding_report.Services
     {
         //Task<T> GetIssueAsync<T>(string projectName, int issueId);
         //Task<T> GetChildIssuesAsync<T>(string projectName, int parentId);
-        Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId);
-        Task<RedmineAccountInfo> GetCurrentUserInfoAsync();
-        Task<ProjectReportData> GetProjectReportDataAsync(string projectName);
+        Task<WeldingReportData> GetReportDataAsync(string projectName, int parentIssueId);
+        Task<AccountInfo> GetCurrentUserInfoAsync();
+        Task<WeldingProjectReportData> GetProjectReportDataAsync(string projectName);
+
+        Task<RequestReportData> GetRequestReportDataAsync(int issueId);
     }
 
     public class RedmineService : IRedmineService
@@ -69,17 +71,125 @@ namespace welding_report.Services
         //}
 
 
-        public async Task<RedmineReportData> GetReportDataAsync(string projectName, int parentIssueId)
+        public async Task<RequestReportData> GetRequestReportDataAsync(int issueId)
+        {
+            if (context != "request")
+            {
+                context = "request";
+                SetHttpClient();
+            }
+
+            var reportData = new RequestReportData();
+
+            var issueResponse = await _httpClient.GetFromJsonAsync<RequestIssueResponse>($"issues/{issueId}.json");
+            if (issueResponse?.Issue == null)
+            {
+               throw new Exception("Акт не найден");
+            }
+
+            reportData.Name = $"{issueResponse.Issue.Tracker.Name}-{issueId}";
+
+            reportData.RequestDate = issueResponse.Issue.StartDate;
+
+            foreach (var field in issueResponse.Issue.CustomFields)
+            {
+                if (field.Name == "Куратор от НПЗ")
+                {
+                    var stringValue = field.Value.GetString();
+                    if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
+                    {
+                        var userInfo = await GetUserInfoAsync(parsedValue);
+                        if (userInfo?.User != null)
+                        {
+                            reportData.CustomerName = $"{userInfo.User.LastName} {userInfo.User.FirstName}";
+                            reportData.CustomerEmail = userInfo.User.Mail;
+                        }
+                    }
+                }
+
+                if (field.Name == "Куратор заявки ЛИНК")
+                {
+                    var stringValue = field.Value.GetString();
+                    if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
+                    {
+                        var userInfo = await GetUserInfoAsync(parsedValue);
+                        if (userInfo?.User != null)
+                        {
+                            reportData.CuratorName = $"{userInfo.User.LastName} {userInfo.User.FirstName}";
+                            reportData.CuratorEmail = userInfo.User.Mail;
+                        }
+                    }
+                }
+
+                if (field.Name == "Направление деятельности")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.Theme = stringValue;
+                }
+
+                if (field.Name == "Цель работы")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.Aim = stringValue;
+                }
+
+                if (field.Name == "Ожидаемая дата начала")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.PlanStartDateText = stringValue;
+                }
+
+                if (field.Name == "Ожидаемый срок завершения")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.PlanEndDateText = stringValue;
+                }
+
+                if (field.Name == "Сумма, руб")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.Cost = stringValue;
+                }
+
+                if (field.Name == "Объем работ силами ЛИНК, руб")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.OwnCost = stringValue;
+                }
+
+                if (field.Name == "Объем субподряда, руб")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.SubCost = stringValue;
+                }
+
+                if (field.Name == "Материальные затраты, руб")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.MaterialCost = stringValue;
+                }
+                if (field.Name == "Прочие затраты, руб")
+                {
+                    var stringValue = field.Value.GetString();
+                    reportData.OtherCost = stringValue;
+                }
+            }
+
+            return reportData;
+        }
+
+
+        public async Task<WeldingReportData> GetReportDataAsync(string projectName, int parentIssueId)
         {
             if (context != "welding")
             {
                 context = "welding";
                 SetHttpClient();
             }
-            var reportData = new RedmineReportData();
+            var reportData = new WeldingReportData();
 
             // Получение данных родительского акта
-            var parentResponse = await _httpClient.GetFromJsonAsync<RedmineIssueResponse>($"issues/{parentIssueId}.json");
+            var parentResponse = await _httpClient.GetFromJsonAsync<WeldingIssueResponse>($"issues/{parentIssueId}.json");
             if (parentResponse?.Issue == null)
                 throw new Exception("Родительский акт не найден");
 
@@ -228,7 +338,7 @@ namespace welding_report.Services
         }
 
 
-        public async Task<ProjectReportData> GetProjectReportDataAsync(string projectIdentifier)
+        public async Task<WeldingProjectReportData> GetProjectReportDataAsync(string projectIdentifier)
         {
             if (context != "welding")
             {
@@ -236,13 +346,13 @@ namespace welding_report.Services
                 SetHttpClient();
             }
 
-            var projectReport = new ProjectReportData { Identifier = projectIdentifier };
+            var projectReport = new WeldingProjectReportData { Identifier = projectIdentifier };
 
             var projectResponse = await _httpClient.GetAsync(
                 $"projects/{projectIdentifier}.json"
             );
 
-            var parsedProjectResponse = await projectResponse.Content.ReadFromJsonAsync<RedmineProjectResponse>();
+            var parsedProjectResponse = await projectResponse.Content.ReadFromJsonAsync<WeldingProjectResponse>();
             if (parsedProjectResponse?.Project?.Name != null)
             {
                 projectReport.Name = parsedProjectResponse.Project.Name;
@@ -258,7 +368,7 @@ namespace welding_report.Services
             );
             response.EnsureSuccessStatusCode();
 
-            var issuesResponse = await response.Content.ReadFromJsonAsync<RedmineIssueListResponse>();
+            var issuesResponse = await response.Content.ReadFromJsonAsync<WeldingIssueListResponse>();
             if (issuesResponse?.Issues == null) return projectReport;
 
             // Для каждого акта собираем данные
@@ -271,18 +381,19 @@ namespace welding_report.Services
             return projectReport;
         }
 
-        public async Task<RedmineAccountInfo> GetCurrentUserInfoAsync()
+        public async Task<AccountInfo> GetCurrentUserInfoAsync()
         {
-            if (context != "welding")
-            {
-                context = "welding";
-                SetHttpClient();
-            }
             var response = await _httpClient.GetAsync("/my/account.json");
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<RedmineAccountInfo>();
+            return await response.Content.ReadFromJsonAsync<AccountInfo>();
         }
 
+        private async Task<AccountInfo> GetUserInfoAsync(int userId)
+        {
+            var response = await _httpClient.GetAsync($"users/{userId}.json");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<AccountInfo>();
+        }
 
     }
 }
