@@ -21,8 +21,6 @@ public class WeldingReportController : ControllerBase
     private readonly INumberToText _numberToText;
     private readonly IRequestWordReportGenerator _wordReportGenerator;
 
-    private readonly RedmineSettings _redmineSettings;
-
     public WeldingReportController(
         IWebHostEnvironment env,
         ILogger<WeldingReportController> logger,
@@ -44,10 +42,10 @@ public class WeldingReportController : ControllerBase
         _wordReportGenerator = wordReportGenerator;
     }
 
-    [HttpPost("generate-issue-from-request")]
+    [HttpGet("generate-issue-from-request")]
     public async Task<IActionResult> GenerateIssueFromRequest(
-        [FromForm] int issueId = 45,
-        [FromForm] string apiKey = "secret"
+        [FromQuery] int issueId = 45,
+        [FromQuery] string apiKey = "secret"
         //[FromForm] string projectName = "portal_zayavok_2"
         )
     {
@@ -88,12 +86,12 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-    [HttpPost("generate-issue-from-welding")]
+    [HttpGet("generate-issue-from-welding")]
     public async Task<IActionResult> GenerateIssueFromRedmine(
-        [FromForm] int issueId = 6,
-        [FromForm] string projectName = "test_project",
-        [FromForm] string apiKey = "secret",
-        [FromForm] bool sendMail = false)
+        [FromQuery] int issueId = 6,
+        [FromQuery] string projectName = "test_project",
+        [FromQuery] string apiKey = "secret",
+        [FromQuery] bool sendMail = false)
     {
         try
         {
@@ -130,11 +128,11 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-    [HttpPost("generate-project-from-welding")]
+    [HttpGet("generate-project-from-welding")]
     public async Task<IActionResult> GenerateProjectFromWelding(
-        [FromForm] string projectIdentifier = "test_project",
-        [FromForm] string apiKey = "secret",
-        [FromForm] bool sendMail = false)
+        [FromQuery] string projectIdentifier = "test_project",
+        [FromQuery] string apiKey = "secret",
+        [FromQuery] bool sendMail = false)
     {
         try
         {
