@@ -3,14 +3,13 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using welding_report.Models;
 using System.Globalization;
+using DocumentFormat.OpenXml;
 
 
 namespace welding_report.Services
 {
     public interface IRedmineService
     {
-        //Task<T> GetIssueAsync<T>(string projectName, int issueId);
-        //Task<T> GetChildIssuesAsync<T>(string projectName, int parentId);
         Task<WeldingReportData> GetReportDataAsync(string projectName, int parentIssueId);
         Task<AccountInfo> GetCurrentUserInfoAsync();
         Task<WeldingProjectReportData> GetProjectReportDataAsync(string projectName);
@@ -26,8 +25,8 @@ namespace welding_report.Services
         private readonly RedmineSettings _settings;
         private readonly ILogger<RedmineService> _logger;
 
-        private string _apiKey;
-        private string _context;
+        private string _apiKey = "";
+        private string _context = "";
 
         public RedmineService(
             HttpClient httpClient,
@@ -69,24 +68,6 @@ namespace welding_report.Services
             _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _apiKey);
         }
 
-
-        //public async Task<T> GetIssueAsync<T>(string projectName, int issueId)
-        //{
-        //    var response = await _httpClient.GetAsync($"issues/{issueId}.json");
-        //    response.EnsureSuccessStatusCode();
-        //    //return await response.Content.ReadFromJsonAsync<T>();
-        //    return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
-        //}
-
-        //public async Task<T> GetChildIssuesAsync<T>(string projectName, int parentId)
-        //{
-        //    var response = await _httpClient.GetAsync($"projects/{projectName}/issues.json?parent_id={parentId}&status_id=*&include=attachments");
-        //    response.EnsureSuccessStatusCode();
-        //    //return await response.Content.ReadFromJsonAsync<T>();
-        //    return JsonSerializer.Deserialize<dynamic>(await response.Content.ReadAsStringAsync());
-        //}
-
-
         public async Task<RequestReportData> GetRequestReportDataAsync(int issueId)
         {
             if (_context != "request")
@@ -105,7 +86,21 @@ namespace welding_report.Services
 
             reportData.Name = $"{issueResponse.Issue.Tracker.Name}-{issueId}";
 
-            reportData.RequestDate = issueResponse.Issue.StartDate;
+            var startDate = issueResponse.Issue.StartDate;
+            if (DateTime.TryParseExact(startDate,
+                             "yyyy-MM-dd",
+                             CultureInfo.InvariantCulture,
+                             DateTimeStyles.None,
+                             out DateTime parsedStartDate))
+            {
+                reportData.RequestDate = parsedStartDate.ToString("dd.MM.yyyy");
+            }
+            else
+            {
+                reportData.RequestDate = startDate;
+            }
+
+            reportData.Theme = issueResponse.Issue.Subject;
 
             foreach (var field in issueResponse.Issue.CustomFields)
             {
@@ -137,12 +132,6 @@ namespace welding_report.Services
                     }
                 }
 
-                if (field.Name == "Направление деятельности")
-                {
-                    var stringValue = field.Value.GetString();
-                    reportData.Theme = stringValue;
-                }
-
                 if (field.Name == "Цель работы")
                 {
                     var stringValue = field.Value.GetString();
@@ -152,13 +141,37 @@ namespace welding_report.Services
                 if (field.Name == "Ожидаемая дата начала")
                 {
                     var stringValue = field.Value.GetString();
-                    reportData.PlanStartDateText = stringValue;
+                    if (DateTime.TryParseExact(stringValue,
+                             "yyyy-MM-dd",
+                             CultureInfo.InvariantCulture,
+                             DateTimeStyles.None,
+                             out DateTime parsedDate))
+                    {
+                        reportData.PlanStartDateText = parsedDate.ToString("dd.MM.yyyy");
+                    }
+                    else
+                    {
+                        // Обработка некорректного формата, можно оставить оригинальную строку или задать ошибку
+                        reportData.PlanStartDateText = stringValue;
+                    }
+                 
                 }
 
                 if (field.Name == "Ожидаемый срок завершения")
                 {
                     var stringValue = field.Value.GetString();
-                    reportData.PlanEndDateText = stringValue;
+                    if (DateTime.TryParseExact(stringValue,
+                             "yyyy-MM-dd",
+                             CultureInfo.InvariantCulture,
+                             DateTimeStyles.None,
+                             out DateTime parsedDate))
+                    {
+                        reportData.PlanEndDateText = parsedDate.ToString("dd.MM.yyyy");
+                    }
+                    else
+                    {
+                        reportData.PlanEndDateText = stringValue;
+                    }
                 }
 
                 if (field.Name == "Сумма, руб")

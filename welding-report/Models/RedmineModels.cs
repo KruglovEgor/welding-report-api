@@ -84,7 +84,7 @@ namespace welding_report.Models
         public string Subject { get; set; }
 
         [JsonPropertyName("custom_fields")]
-        public List<WeldingCustomField> CustomFields { get; set; }
+        public List<CustomField> CustomFields { get; set; }
     }
 
     public class WeldingIssueListResponse
@@ -102,13 +102,13 @@ namespace welding_report.Models
     public class RedmineChildIssue
     {
         [JsonPropertyName("custom_fields")]
-        public List<WeldingCustomField> CustomFields { get; set; }
+        public List<CustomField> CustomFields { get; set; }
 
         [JsonPropertyName("attachments")]
         public List<WeldingAttachment> Attachments { get; set; }
     }
 
-    public class WeldingCustomField
+    public class CustomField
     {
         [JsonPropertyName("name")]
         public string Name { get; set; }
@@ -143,23 +143,17 @@ namespace welding_report.Models
         //public string Subject { get; set; }
 
         [JsonPropertyName("custom_fields")]
-        public List<RequestCustomField> CustomFields { get; set; }
+        public List<CustomField> CustomFields { get; set; }
 
         [JsonPropertyName("tracker")]
         public RequestTracker Tracker { get; set; }
 
         [JsonPropertyName("start_date")]
         public string StartDate { get; set; }
+        [JsonPropertyName("subject")]
+        public string Subject { get; set; }
     }
 
-    public class RequestCustomField
-    {
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
-
-        [JsonPropertyName("value")]
-        public JsonElement Value { get; set; }
-    }
 
     public class RequestTracker
     {
