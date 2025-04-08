@@ -87,7 +87,7 @@ public class WeldingReportController : ControllerBase
     }
 
     [HttpGet("generate-issue-from-welding")]
-    public async Task<IActionResult> GenerateIssueFromRedmine(
+    public async Task<IActionResult> GenerateIssueFromWelding(
         [FromQuery] int issueId = 6,
         [FromQuery] string projectName = "test_project",
         [FromQuery] string apiKey = "secret",
@@ -112,8 +112,8 @@ public class WeldingReportController : ControllerBase
             if (sendMail)
             {
                 await _emailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber, apiKey, "welding");
+                return Ok("Отчет успешно создан и отправлен по электронной почте");
             }
-
 
             return File(
                 excelBytes,
@@ -153,7 +153,8 @@ public class WeldingReportController : ControllerBase
 
             if (sendMail)
             {
-                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name,  apiKey, "welding");
+                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name, apiKey, "welding");
+                return Ok("Отчет успешно создан и отправлен по электронной почте");
             }
 
             return File(
