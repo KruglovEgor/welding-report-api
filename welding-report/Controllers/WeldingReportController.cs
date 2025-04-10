@@ -89,7 +89,7 @@ public class WeldingReportController : ControllerBase
     [HttpGet("generate-issue-from-welding")]
     public async Task<IActionResult> GenerateIssueFromWelding(
         [FromQuery] int issueId = 6,
-        [FromQuery] string projectName = "test_project",
+        [FromQuery] int projectIdentifier = 1,
         [FromQuery] string apiKey = "secret",
         [FromQuery] bool sendMail = false)
     {
@@ -97,7 +97,7 @@ public class WeldingReportController : ControllerBase
         {
             _redmineService.SetApiKey(apiKey);
             _excelGenerator.SetApiKey(apiKey);
-            var reportData = await _redmineService.GetReportDataAsync(projectName, issueId);
+            var reportData = await _redmineService.GetWeldingIssueDataAsync(projectIdentifier, issueId);
             var excelBytes = await _excelGenerator.GenerateIssueReport(reportData);
 
             // Сохранение отчета
@@ -130,7 +130,7 @@ public class WeldingReportController : ControllerBase
 
     [HttpGet("generate-project-from-welding")]
     public async Task<IActionResult> GenerateProjectFromWelding(
-        [FromQuery] string projectIdentifier = "test_project",
+        [FromQuery] int projectIdentifier = 1,
         [FromQuery] string apiKey = "secret",
         [FromQuery] bool sendMail = false)
     {

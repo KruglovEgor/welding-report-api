@@ -11,7 +11,7 @@
 
     public interface IExcelReportGenerator
     {
-        Task<byte[]> GenerateIssueReport(WeldingReportData data);
+        Task<byte[]> GenerateIssueReport(WeldingIssueReportData data);
         Task<byte[]> GenerateProjectReport(WeldingProjectReportData data);
         void SetApiKey(string apiKey);
 
@@ -58,7 +58,7 @@
             webClient.Headers.Add("X-Redmine-API-Key", _apiKey);
         }
 
-        public async Task<byte[]> GenerateIssueReport(WeldingReportData data)
+        public async Task<byte[]> GenerateIssueReport(WeldingIssueReportData data)
         {
             var templateFile = new FileInfo(_templatePath);
             using var package = new ExcelPackage(templateFile);
@@ -90,7 +90,7 @@
         }
 
 
-        private bool InsertResultLine(ExcelWorksheet worksheet, WeldingReportData data, int row)
+        private bool InsertResultLine(ExcelWorksheet worksheet, WeldingIssueReportData data, int row)
         {
             try
             {
@@ -156,7 +156,7 @@
 
 
 
-        private int FillData(ExcelWorksheet worksheet, WeldingReportData data, int row)
+        private int FillData(ExcelWorksheet worksheet, WeldingIssueReportData data, int row)
         {
             int innerRow = row;
             try

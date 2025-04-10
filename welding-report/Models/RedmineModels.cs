@@ -7,8 +7,8 @@ namespace welding_report.Models
     public class WeldingProjectReportData
     {
         public string Name { get; set; }
-        public string Identifier { get; set; }
-        public List<WeldingReportData> Acts { get; set; } = new();
+        public int Identifier { get; set; }
+        public List<WeldingIssueReportData> Acts { get; set; } = new();
     }
 
     public class WeldingProjectResponse
@@ -24,7 +24,7 @@ namespace welding_report.Models
 
     }
 
-    public class WeldingReportData
+    public class WeldingIssueReportData
     {
         public string ReportNumber { get; set; }
         public int JointsCountFact { get; set; }

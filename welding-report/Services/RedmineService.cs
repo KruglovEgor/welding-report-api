@@ -10,9 +10,9 @@ namespace welding_report.Services
 {
     public interface IRedmineService
     {
-        Task<WeldingReportData> GetReportDataAsync(string projectName, int parentIssueId);
+        Task<WeldingIssueReportData> GetWeldingIssueDataAsync(int projectIdentifier, int parentIssueId);
         Task<AccountInfo> GetCurrentUserInfoAsync();
-        Task<WeldingProjectReportData> GetProjectReportDataAsync(string projectName);
+        Task<WeldingProjectReportData> GetProjectReportDataAsync(int projectIdentifier);
         Task<RequestReportData> GetRequestReportDataAsync(int issueId);
         void SetApiKey(string apiKey);
         void SetContext(string context);
@@ -208,21 +208,21 @@ namespace welding_report.Services
         }
 
 
-        public async Task<WeldingReportData> GetReportDataAsync(string projectName, int parentIssueId)
+        public async Task<WeldingIssueReportData> GetWeldingIssueDataAsync(int projectIdentifier, int parentIssueId)
         {
             if (_context != "welding")
             {
                 _context = "welding";
                 SetHttpClient();
             }
-            var reportData = new WeldingReportData();
+            var issueReportData = new WeldingIssueReportData();
 
             // Получение данных родительского акта
             var parentResponse = await _httpClient.GetFromJsonAsync<WeldingIssueResponse>($"issues/{parentIssueId}.json");
             if (parentResponse?.Issue == null)
                 throw new Exception("Родительский акт не найден");
 
-            reportData.ReportNumber = parentResponse.Issue.Subject;
+            issueReportData.ReportNumber = parentResponse.Issue.Subject;
 
             foreach (var field in parentResponse.Issue.CustomFields)
             {
@@ -231,8 +231,8 @@ namespace welding_report.Services
                     var stringValue = field.Value.GetString();
                     if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                     {
-                        reportData.JointsCountPlan = parsedValue;
-                        _logger.LogInformation($"Parsed JointsCountPlan: {reportData.JointsCountFact}");
+                        issueReportData.JointsCountPlan = parsedValue;
+                        _logger.LogInformation($"Parsed JointsCountPlan: {issueReportData.JointsCountFact}");
                     }
                 }
 
@@ -241,8 +241,8 @@ namespace welding_report.Services
                     var stringValue = field.Value.GetString();
                     if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                     {
-                        reportData.DiametrInchesPlan = Math.Round(parsedValue, 2);
-                        _logger.LogInformation($"Parsed DiametrInchesPlan: {reportData.JointsCountFact}");
+                        issueReportData.DiametrInchesPlan = Math.Round(parsedValue, 2);
+                        _logger.LogInformation($"Parsed DiametrInchesPlan: {issueReportData.JointsCountFact}");
                     }
                 }
 
@@ -251,16 +251,16 @@ namespace welding_report.Services
                     var stringValue = field.Value.GetString();
                     if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                     {
-                        reportData.DiametrInchesFact = Math.Round(parsedValue, 2);
-                        _logger.LogInformation($"Parsed DiametrInchesFact: {reportData.JointsCountFact}");
+                        issueReportData.DiametrInchesFact = Math.Round(parsedValue, 2);
+                        _logger.LogInformation($"Parsed DiametrInchesFact: {issueReportData.JointsCountFact}");
                     }
                 }
             }
 
                 // Получение дочерних задач
-                var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineChildIssueListResponse>($"projects/{projectName}/issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
+                var childrenResponse = await _httpClient.GetFromJsonAsync<RedmineChildIssueListResponse>($"projects/{projectIdentifier}/issues.json?parent_id={parentIssueId}&status_id=*&include=attachments");
             if (childrenResponse?.Issues == null)
-                return reportData;
+                return issueReportData;
             
 
             foreach (var child in childrenResponse.Issues)
@@ -321,7 +321,7 @@ namespace welding_report.Services
                         if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                         {
                             group.JointsCount = parsedValue;
-                            reportData.JointsCountFact += parsedValue;
+                            issueReportData.JointsCountFact += parsedValue;
                             _logger.LogInformation($"Parsed JointsCount: {group.DiameterInches}");
                         }
                     }
@@ -360,14 +360,14 @@ namespace welding_report.Services
 
                 group.Entries = entries.Values.ToList();
                 _logger.LogInformation($"Entries: {entries.Values.ToList()}");
-                reportData.Groups.Add(group);
+                issueReportData.Groups.Add(group);
             }
 
-            return reportData;
+            return issueReportData;
         }
 
 
-        public async Task<WeldingProjectReportData> GetProjectReportDataAsync(string projectIdentifier)
+        public async Task<WeldingProjectReportData> GetProjectReportDataAsync(int projectIdentifier)
         {
             if (_context != "welding")
             {
@@ -381,6 +381,8 @@ namespace welding_report.Services
                 $"projects/{projectIdentifier}.json"
             );
 
+
+
             var parsedProjectResponse = await projectResponse.Content.ReadFromJsonAsync<WeldingProjectResponse>();
             if (parsedProjectResponse?.Project?.Name != null)
             {
@@ -388,7 +390,7 @@ namespace welding_report.Services
             }
             else
             {
-                projectReport.Name = projectIdentifier;
+                projectReport.Name = projectIdentifier.ToString();
             }
             
             // Получаем все акты проекта (трекер ID=1)
@@ -403,7 +405,7 @@ namespace welding_report.Services
             // Для каждого акта собираем данные
             foreach (var actIssue in issuesResponse.Issues)
             {
-                var actData = await GetReportDataAsync(projectIdentifier, actIssue.Id);
+                var actData = await GetWeldingIssueDataAsync(projectIdentifier, actIssue.Id);
                 projectReport.Acts.Add(actData);
             }
 
