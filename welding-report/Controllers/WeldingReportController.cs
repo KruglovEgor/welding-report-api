@@ -46,9 +46,9 @@ public class WeldingReportController : ControllerBase
     public async Task<IActionResult> GenerateIssueFromRequest(
         [FromQuery] int issueId = 45,
         [FromQuery] string apiKey = "secret"
-        //[FromForm] string projectName = "portal_zayavok_2"
-        )
+    )
     {
+        string reportPath = string.Empty;
         try
         {
             _redmineService.SetApiKey(apiKey);
@@ -64,27 +64,48 @@ public class WeldingReportController : ControllerBase
             var docBytes = _wordReportGenerator.GenerateRequestReport(reportData);
 
             // Сохранение файла
-            var reportPath = Path.Combine(
+            reportPath = Path.Combine(
                 _env.ContentRootPath,
-               _appSettings.ReportStoragePath,
+                _appSettings.ReportStoragePath,
                 $"{reportData.Name}.docx"
             );
 
             Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
             await System.IO.File.WriteAllBytesAsync(reportPath, docBytes);
 
-            return File(
-            docBytes,
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            $"{reportData.Name}.docx"
-        );
+            // Возвращаем файл и запускаем задачу на удаление после отправки
+            var result = File(
+                docBytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                $"{reportData.Name}.docx"
+            );
+
+            // Запускаем удаление файла после возврата результата
+            _ = Task.Run(async () => {
+                // Небольшая задержка для завершения отправки файла
+                await Task.Delay(1000);
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+            });
+
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка генерации отчета");
+
+            // Удаляем файл в случае ошибки, если он был создан
+            if (!string.IsNullOrEmpty(reportPath) && System.IO.File.Exists(reportPath))
+            {
+                System.IO.File.Delete(reportPath);
+            }
+
             return StatusCode(500, ex.Message);
         }
     }
+
 
     [HttpGet("generate-issue-from-welding")]
     public async Task<IActionResult> GenerateIssueFromWelding(
@@ -93,6 +114,7 @@ public class WeldingReportController : ControllerBase
         [FromQuery] string apiKey = "secret",
         [FromQuery] bool sendMail = false)
     {
+        string reportPath = string.Empty;
         try
         {
             _redmineService.SetApiKey(apiKey);
@@ -101,7 +123,7 @@ public class WeldingReportController : ControllerBase
             var excelBytes = await _excelGenerator.GenerateIssueReport(reportData);
 
             // Сохранение отчета
-            var reportPath = Path.Combine(
+            reportPath = Path.Combine(
                 _env.ContentRootPath,
                 _appSettings.ReportStoragePath,
                 $"{reportData.ReportNumber}.xlsx"
@@ -112,18 +134,45 @@ public class WeldingReportController : ControllerBase
             if (sendMail)
             {
                 await _emailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber, apiKey, "welding");
+
+                // Удаление файла после отправки email
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+
                 return Ok("Отчет успешно создан и отправлен по электронной почте");
             }
 
-            return File(
+            // Возвращаем файл и запускаем задачу на удаление после отправки
+            var result = File(
                 excelBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"{reportData.ReportNumber}.xlsx"
             );
+
+            // Запускаем удаление файла после возврата результата
+            _ = Task.Run(async () => {
+                // Небольшая задержка для завершения отправки файла
+                await Task.Delay(1000);
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+            });
+
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка генерации отчета");
+
+            // Удаляем файл в случае ошибки, если он был создан
+            if (!string.IsNullOrEmpty(reportPath) && System.IO.File.Exists(reportPath))
+            {
+                System.IO.File.Delete(reportPath);
+            }
+
             return StatusCode(500, ex.Message);
         }
     }
@@ -134,6 +183,7 @@ public class WeldingReportController : ControllerBase
         [FromQuery] string apiKey = "secret",
         [FromQuery] bool sendMail = false)
     {
+        string reportPath = string.Empty;
         try
         {
             _redmineService.SetApiKey(apiKey);
@@ -142,7 +192,7 @@ public class WeldingReportController : ControllerBase
             var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
 
             // Сохранение отчета
-            var reportPath = Path.Combine(
+            reportPath = Path.Combine(
                 _env.ContentRootPath,
                 _appSettings.ReportStoragePath,
                 $"{projectData.Name}.xlsx"
@@ -154,18 +204,45 @@ public class WeldingReportController : ControllerBase
             if (sendMail)
             {
                 await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name, apiKey, "welding");
+
+                // Удаление файла после отправки email
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+
                 return Ok("Отчет успешно создан и отправлен по электронной почте");
             }
 
-            return File(
+            // Возвращаем файл и запускаем задачу на удаление после отправки
+            var result = File(
                 excelBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"{projectData.Name}.xlsx"
             );
+
+            // Запускаем удаление файла после возврата результата
+            _ = Task.Run(async () => {
+                // Небольшая задержка для завершения отправки файла
+                await Task.Delay(1000);
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+            });
+
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка генерации отчета");
+
+            // Удаляем файл в случае ошибки, если он был создан
+            if (!string.IsNullOrEmpty(reportPath) && System.IO.File.Exists(reportPath))
+            {
+                System.IO.File.Delete(reportPath);
+            }
+
             return StatusCode(500, ex.Message);
         }
     }
