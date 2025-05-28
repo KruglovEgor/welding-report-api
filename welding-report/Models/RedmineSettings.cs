@@ -8,6 +8,8 @@ namespace welding_report.Models
         public string WeldingApiKey { get; set; }
         public string RequestUrl { get; set; }
         public string RequestApiKey { get; set; }
+        public string SuprUrl { get; set; }
+        public string SuprApiKey { get; set; }
 
     }
 

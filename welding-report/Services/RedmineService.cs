@@ -14,6 +14,8 @@ namespace welding_report.Services
         Task<AccountInfo> GetCurrentUserInfoAsync();
         Task<WeldingProjectReportData> GetProjectReportDataAsync(int projectIdentifier);
         Task<RequestReportData> GetRequestReportDataAsync(int issueId);
+
+        Task<SuprGroupReportData> GetSuprGroupReportDataAsync(string projectIdentifier, int applicationNumber);
         void SetApiKey(string apiKey);
         void SetContext(string context);
         void SetHttpClient();
@@ -63,8 +65,13 @@ namespace welding_report.Services
             {
                 _httpClient.BaseAddress = new Uri(_settings.RequestUrl);
             }
-            _httpClient.DefaultRequestHeaders.Accept.Add(
-                    new MediaTypeWithQualityHeaderValue("application/json"));
+            else if (_context == "supr")
+            {
+                _httpClient.BaseAddress = new Uri(_settings.SuprUrl);
+            }
+            
+                _httpClient.DefaultRequestHeaders.Accept.Add(
+                        new MediaTypeWithQualityHeaderValue("application/json"));
             _httpClient.DefaultRequestHeaders.Add("X-Redmine-API-Key", _apiKey);
         }
 
@@ -424,6 +431,40 @@ namespace welding_report.Services
             var response = await _httpClient.GetAsync($"users/{userId}.json");
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<AccountInfo>();
+        }
+
+
+        public async Task<SuprGroupReportData> GetSuprGroupReportDataAsync(string projectIdentifier, int applicationNumber)
+        {
+            if (_context != "supr")
+            {
+                _context = "supr";
+                SetHttpClient();
+            }
+
+            var reportData = new SuprGroupReportData
+            {
+                Factory = projectIdentifier.Split(' ')[0]
+            };
+
+            var response = await _httpClient.GetAsync($"projects/{projectIdentifier}/issues.json?cf_38={applicationNumber}");
+            response.EnsureSuccessStatusCode();
+
+            var issuesResponse = await response.Content.ReadFromJsonAsync<SuprIssueListResponse>();
+            if (issuesResponse?.Issues == null || issuesResponse.Issues.Count == 0)
+                return reportData;
+
+            bool first = true;
+
+            foreach (SuprIssue issue in  issuesResponse.Issues) { 
+                if (first)
+                {
+                    continue;
+                }
+                continue;
+            }
+
+           
         }
 
     }

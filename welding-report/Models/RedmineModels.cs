@@ -14,10 +14,10 @@ namespace welding_report.Models
     public class WeldingProjectResponse
     {
         [JsonPropertyName("project")]
-        public WeldingProject Project { get; set; }
+        public Project Project { get; set; }
     }
 
-    public class WeldingProject
+    public class Project
     {
         [JsonPropertyName("name")]
         public string Name { get; set; }
@@ -186,5 +186,67 @@ namespace welding_report.Models
         public string SubCost { get; set; }
         public string MaterialCost { get; set; }
         public string OtherCost { get; set; }
+    }
+
+
+    public class SuprIssueListResponse
+    {
+        [JsonPropertyName("issues")]
+        public List<SuprIssue> Issues { get; set; }
+    }
+
+
+    public class SuprIssue
+    {
+        [JsonPropertyName("project")]
+        public Project Project { get; set; }
+
+        [JsonPropertyName("subject")]
+        public string Subject { get; set; }
+
+        [JsonPropertyName("custom_fields")]
+        public List<CustomField> CustomFields { get; set; }
+
+        [JsonPropertyName("priority")]
+        public Priority Priority { get; set; }
+
+
+        [JsonPropertyName("created_on")]
+        public string CreateDate { get; set; }
+    }
+
+
+    public class Priority
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+    }
+
+    public class SuprGroupReportData
+    {
+        public List<SuprIssueReportData> suprIssueReportDatas { get; set; }
+
+        public string Factory { get; set; }
+
+        public string InstallationName { get; set; }
+
+        public string TechPositionName { get; set; }
+
+        public string EquipmentUnitNumber { get; set; }
+
+        //public string EquipmentType { get; set; }
+
+        public string MarkAndManufacturer { get; set; }
+        public string CreateDate { get; set; }
+    }
+
+
+    public class SuprIssueReportData
+    {
+        public string Detail { get; set; }
+        public string ScanningPeriod { get; set; }
+        public string Condition { get; set; }
+        public string Priority { get; set; }
+        public string JobType { get; set; }
     }
 }

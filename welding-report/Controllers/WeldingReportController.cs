@@ -246,4 +246,75 @@ public class WeldingReportController : ControllerBase
             return StatusCode(500, ex.Message);
         }
     }
+
+
+    [HttpGet("generate-group-from-supr")]
+    public async Task<IActionResult> GenerateGroupFromSupr(
+        [FromQuery] string projectIdentifier = "test_project",
+        [FromQuery] string apiKey = "c022be329bc45f078b14c50b95b0bf4177257c75",
+        [FromQuery] int ApplicationNumber = 222
+        )
+    {
+        string reportPath = string.Empty;
+        try
+        {
+            _redmineService.SetApiKey(apiKey);
+            var projectData = await _redmineService.GetProjectReportDataAsync(projectIdentifier);
+            var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
+
+            // Сохранение отчета
+            reportPath = Path.Combine(
+                _env.ContentRootPath,
+                _appSettings.ReportStoragePath,
+                $"{projectData.Name}.xlsx"
+            );
+
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+            await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
+
+            if (sendMail)
+            {
+                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name, apiKey, "welding");
+
+                // Удаление файла после отправки email
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+
+                return Ok("Отчет успешно создан и отправлен по электронной почте");
+            }
+
+            // Возвращаем файл и запускаем задачу на удаление после отправки
+            var result = File(
+                excelBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"{projectData.Name}.xlsx"
+            );
+
+            // Запускаем удаление файла после возврата результата
+            _ = Task.Run(async () => {
+                // Небольшая задержка для завершения отправки файла
+                await Task.Delay(1000);
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+            });
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка генерации отчета");
+
+            // Удаляем файл в случае ошибки, если он был создан
+            if (!string.IsNullOrEmpty(reportPath) && System.IO.File.Exists(reportPath))
+            {
+                System.IO.File.Delete(reportPath);
+            }
+
+            return StatusCode(500, ex.Message);
+        }
+    }
 }
