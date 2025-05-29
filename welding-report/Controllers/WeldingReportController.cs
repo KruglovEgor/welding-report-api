@@ -251,58 +251,69 @@ public class WeldingReportController : ControllerBase
     [HttpGet("generate-group-from-supr")]
     public async Task<IActionResult> GenerateGroupFromSupr(
         [FromQuery] string projectIdentifier = "test_project",
-        [FromQuery] string apiKey = "c022be329bc45f078b14c50b95b0bf4177257c75",
-        [FromQuery] int ApplicationNumber = 222
+        [FromQuery] string apiKey = "secret",
+        [FromQuery] int applicationNumber = 222
         )
     {
         string reportPath = string.Empty;
         try
         {
             _redmineService.SetApiKey(apiKey);
-            var projectData = await _redmineService.GetProjectReportDataAsync(projectIdentifier);
-            var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
+            var projectData = await _redmineService.GetSuprGroupReportDataAsync(projectIdentifier, applicationNumber);
+
+            //var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
 
             // Сохранение отчета
-            reportPath = Path.Combine(
-                _env.ContentRootPath,
-                _appSettings.ReportStoragePath,
-                $"{projectData.Name}.xlsx"
-            );
+            //reportPath = Path.Combine(
+            //    _env.ContentRootPath,
+            //    _appSettings.ReportStoragePath,
+            //    $"{projectData.Name}.xlsx"
+            //);
 
-            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
-            await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
-
-            if (sendMail)
-            {
-                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name, apiKey, "welding");
-
-                // Удаление файла после отправки email
-                if (System.IO.File.Exists(reportPath))
-                {
-                    System.IO.File.Delete(reportPath);
-                }
-
-                return Ok("Отчет успешно создан и отправлен по электронной почте");
-            }
+            //Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+            //await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
 
             // Возвращаем файл и запускаем задачу на удаление после отправки
-            var result = File(
-                excelBytes,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                $"{projectData.Name}.xlsx"
-            );
+            //var result = File(
+            //    excelBytes,
+            //    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            //    $"{projectData.Name}.xlsx"
+            //);
 
-            // Запускаем удаление файла после возврата результата
-            _ = Task.Run(async () => {
-                // Небольшая задержка для завершения отправки файла
-                await Task.Delay(1000);
-                if (System.IO.File.Exists(reportPath))
-                {
-                    System.IO.File.Delete(reportPath);
-                }
-            });
+            //// Запускаем удаление файла после возврата результата
+            //_ = Task.Run(async () => {
+            //    // Небольшая задержка для завершения отправки файла
+            //    await Task.Delay(1000);
+            //    if (System.IO.File.Exists(reportPath))
+            //    {
+            //        System.IO.File.Delete(reportPath);
+            //    }
+            //});
 
-            return result;
+            //return result;
+
+            // Создаем объект с структурированными данными для вывода
+            var result = new
+            {
+                factory = projectData.Factory,
+                installation = projectData.InstallationName,
+                techPosition = projectData.TechPositionName,
+                equipmentUnitNumber = projectData.EquipmentUnitNumber,
+                markAndManufacturer = projectData.MarkAndManufacturer,
+                createDate = projectData.CreateDate,
+                issues = projectData.suprIssueReportDatas.Select(kvp => new {
+                    number = kvp.Key,
+                    detail = kvp.Value.Detail,
+                    scanningPeriod = kvp.Value.ScanningPeriod,
+                    condition = kvp.Value.Condition,
+                    priority = kvp.Value.Priority,
+                    jobType = kvp.Value.JobType
+                }).ToList()
+            };
+
+            return Ok(result);
+
+
         }
         catch (Exception ex)
         {

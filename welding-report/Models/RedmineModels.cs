@@ -110,6 +110,9 @@ namespace welding_report.Models
 
     public class CustomField
     {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
         [JsonPropertyName("name")]
         public string Name { get; set; }
 
@@ -224,7 +227,7 @@ namespace welding_report.Models
 
     public class SuprGroupReportData
     {
-        public List<SuprIssueReportData> suprIssueReportDatas { get; set; }
+        public Dictionary<int, SuprIssueReportData> suprIssueReportDatas { get; set; }
 
         public string Factory { get; set; }
 
@@ -237,7 +240,7 @@ namespace welding_report.Models
         //public string EquipmentType { get; set; }
 
         public string MarkAndManufacturer { get; set; }
-        public string CreateDate { get; set; }
+        public DateTime CreateDate { get; set; }
     }
 
 

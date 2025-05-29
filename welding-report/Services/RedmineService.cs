@@ -442,10 +442,7 @@ namespace welding_report.Services
                 SetHttpClient();
             }
 
-            var reportData = new SuprGroupReportData
-            {
-                Factory = projectIdentifier.Split(' ')[0]
-            };
+            var reportData = new SuprGroupReportData();
 
             var response = await _httpClient.GetAsync($"projects/{projectIdentifier}/issues.json?cf_38={applicationNumber}");
             response.EnsureSuccessStatusCode();
@@ -455,17 +452,125 @@ namespace welding_report.Services
                 return reportData;
 
             bool first = true;
+            int issuesCount = issuesResponse.Issues.Count;
 
-            foreach (SuprIssue issue in  issuesResponse.Issues) { 
+            reportData.suprIssueReportDatas = new Dictionary<int, SuprIssueReportData>();
+
+
+            foreach (SuprIssue issue in issuesResponse.Issues)
+            {
                 if (first)
                 {
-                    continue;
+                    reportData.Factory = issue.Project.Name.Split(' ')[0];
+
+
+                    // Парсинг даты создания
+                    if (DateTime.TryParse(issue.CreateDate, out DateTime createdDate))
+                    {
+                        reportData.CreateDate = createdDate;
+                    }
+                    else
+                    {
+                        reportData.CreateDate = DateTime.Now;
+                    }
+
+                    string mark = "";
+                    string manufacturer = "";
+
+                    foreach (var field in issue.CustomFields)
+                    {
+                        switch (field.Id)
+                        {
+                            case 1: // Название установки
+                                reportData.InstallationName = field.Value.GetString();
+                                break;
+                            case 18: // Тех. позиция
+                                reportData.TechPositionName = field.Value.GetString();
+                                break;
+                            case 53: // Номер оборудования
+                                reportData.EquipmentUnitNumber = field.Value.GetString();
+                                break;
+                            case 3: // Марка
+                                mark = field.Value.GetString();
+                                break;
+                            case 40: // Изготовитель
+                                manufacturer = field.Value.GetString();
+                                break;
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(mark))
+                    {
+                        reportData.MarkAndManufacturer = manufacturer;
+                    }
+                    else
+                    {
+                        reportData.MarkAndManufacturer = string.IsNullOrEmpty(manufacturer) ? mark : $"{mark}, {manufacturer}";
+                    }
+
+                    first = false;
                 }
-                continue;
+
+                SuprIssueReportData suprIssueReportData = new SuprIssueReportData();
+                int number = 0;
+
+                suprIssueReportData.Detail = issue.Subject;
+                suprIssueReportData.Priority = issue.Priority.Name;
+
+                foreach (var field in issue.CustomFields)
+                {
+                    switch (field.Id)
+                    {
+                        case 58: // Номер п/п
+                            if (int.TryParse(field.Value.GetString(), out int parsedNumber))
+                            {
+                                number = parsedNumber;
+                                if (!reportData.suprIssueReportDatas.ContainsKey(number))
+                                {
+                                    // переходим к следующему кастомному полю
+                                    continue;
+                                }
+                            }
+
+                            for (int i = issuesCount; i >= 1; i--)
+                            {
+                                if (!reportData.suprIssueReportDatas.ContainsKey(i))
+                                {
+                                    number = i;
+                                    break;
+                                }
+                            }
+                            
+                            break;
+
+                        case 20: // Период сканирования
+                            suprIssueReportData.ScanningPeriod = field.Value.GetString();
+                            break;
+                        case 54: // Состояние
+                            suprIssueReportData.Condition = field.Value.GetString();
+                            break;
+                        case 55: // Вид работ
+                            var values = new List<string>();
+                            foreach (var value in field.Value.EnumerateArray()) 
+                            {
+                               values.Add(value.GetString());
+                            }
+                            suprIssueReportData.JobType = string.Join(", ", values);
+                            break;
+                    }
+                }
+
+                // Проверяем, является ли текущая дата создания более ранней
+                if (DateTime.TryParse(issue.CreateDate, out DateTime currentIssueDate) &&
+                    currentIssueDate < reportData.CreateDate)
+                {
+                    reportData.CreateDate = currentIssueDate;
+                }
+
+                reportData.suprIssueReportDatas[number] = suprIssueReportData;
             }
 
-           
+            return reportData;
         }
-
     }
 }
