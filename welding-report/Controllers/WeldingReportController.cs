@@ -7,6 +7,8 @@ using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.Annotations;
 using welding_report.Models;
 using welding_report.Services;
+using welding_report.Services.Request;
+using welding_report.Services.Welding;
 
 [ApiController]
 [Route("api/[controller]")]

@@ -3,7 +3,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.Extensions.Options;
 using welding_report.Models;
 
-namespace welding_report.Services
+namespace welding_report.Services.Request
 {
 
     public interface IRequestWordReportGenerator
@@ -24,7 +24,7 @@ namespace welding_report.Services
             )
         {
             _logger = logger;
-            _templatePath = System.IO.Path.Combine(
+            _templatePath = Path.Combine(
                 appSettings.Value.TemplatePath,
                 "RequestReportTemplate.docx"
             );

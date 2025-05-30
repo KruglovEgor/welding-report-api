@@ -4,7 +4,7 @@ using welding_report.Models;
 using Humanizer;
 
 
-namespace welding_report.Services
+namespace welding_report.Services.Request
 {
     public interface INumberToText
     {

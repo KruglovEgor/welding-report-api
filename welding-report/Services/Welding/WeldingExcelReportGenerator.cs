@@ -1,4 +1,4 @@
-﻿namespace welding_report.Services
+﻿namespace welding_report.Services.Welding
 {
     using OfficeOpenXml;
     using welding_report.Models;
@@ -17,12 +17,12 @@
 
     }
 
-    public class ExcelReportGenerator : IExcelReportGenerator
+    public class WeldingExcelReportGenerator : IExcelReportGenerator
     {
         private readonly string _templatePath;
         private readonly string _worksheetName;
         private readonly int _maxRowHeight;
-        private readonly ILogger<ExcelReportGenerator> _logger;
+        private readonly ILogger<WeldingExcelReportGenerator> _logger;
         private readonly int _maxPhotoColumnWidth;
 
         private readonly int startRow = 2;
@@ -34,8 +34,8 @@
         private string _apiKey;
 
 
-        public ExcelReportGenerator(
-            ILogger<ExcelReportGenerator> logger,
+        public WeldingExcelReportGenerator(
+            ILogger<WeldingExcelReportGenerator> logger,
             IOptions<AppSettings> appSettings
             )
         {
@@ -293,7 +293,7 @@
                 }
                 
                 //1.3 коэффициент для пикселей (1 единица высоты в excel = 1.(3) пикселя)
-                double scale = (double)_maxRowHeight*1.3 / bitmap.Height;
+                double scale = _maxRowHeight*1.3 / bitmap.Height;
                 int newWidth = (int)(bitmap.Width * scale);
                 int newHeight = (int)(bitmap.Height * scale);
 

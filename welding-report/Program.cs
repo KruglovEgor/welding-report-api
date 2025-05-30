@@ -1,8 +1,11 @@
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using OfficeOpenXml;
 using welding_report.Models;
 using welding_report.Services;
+using welding_report.Services.Request;
+using welding_report.Services.Welding;
 
 
 //TODO add more comments
@@ -28,7 +31,7 @@ Console.WriteLine($"Created directories:\nUploads: {uploadsPath}\nReports: {repo
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IExcelReportGenerator, ExcelReportGenerator>();
+builder.Services.AddScoped<IExcelReportGenerator, WeldingExcelReportGenerator>();
 builder.Services.AddScoped<INumberToText, NumberToText>();
 builder.Services.AddScoped<IRequestWordReportGenerator, RequestWordReportGenerator>();
 builder.Services.AddEndpointsApiExplorer();
@@ -37,7 +40,12 @@ builder.Configuration.AddUserSecrets<Program>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 builder.Services.Configure<RedmineSettings>(builder.Configuration.GetSection("RedmineSettings"));
-builder.Services.AddHttpClient<IRedmineService, RedmineService>();
+//builder.Services.AddHttpClient<IRedmineService, RedmineService>();
+builder.Services.AddHttpClient("Request")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+    });
 
 
 builder.Services.AddSwaggerGen();
