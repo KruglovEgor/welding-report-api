@@ -2,27 +2,27 @@
 using System.Net.Mail;
 using System.Net;
 using welding_report.Models;
+using welding_report.Services.Welding;
 
-namespace welding_report.Services
+namespace welding_report.Services.Welding
 {
-    public interface IEmailService
+    public interface IWeldingEmailService
     {
         Task SendReportAsync(string recipientEmail, string subject, string body, byte[] attachment, string attachmentName);
-        Task SendRedmineReportAsync(byte[] reportBytes, string name, string apiKey, string context); 
+        Task SendRedmineReportAsync(byte[] reportBytes, string name, string context);
     }
 
-
-    public class EmailService : IEmailService
+    public class WeldingEmailService : IWeldingEmailService
     {
         private readonly EmailSettings _emailSettings;
-        private readonly IRedmineService _redmineService;
+        private readonly IWeldingRedmineService _weldingRedmineService;
 
-        public EmailService(
+        public WeldingEmailService(
             IOptions<EmailSettings> emailSettings,
-            IRedmineService redmineService)
+            IWeldingRedmineService weldingRedmineService)
         {
             _emailSettings = emailSettings.Value;
-            _redmineService = redmineService;
+            _weldingRedmineService = weldingRedmineService;
         }
 
         public async Task SendReportAsync(string recipientEmail, string subject, string body, byte[] attachment, string attachmentName)
@@ -53,16 +53,12 @@ namespace welding_report.Services
             await smtpClient.SendMailAsync(message);
         }
 
-
         // Новый метод для отправки отчётов из Redmine
-        public async Task SendRedmineReportAsync(byte[] reportBytes, string nameOfFile, string apiKey, string context)
+        public async Task SendRedmineReportAsync(byte[] reportBytes, string nameOfFile, string context)
         {
-            _redmineService.SetApiKey(apiKey);
-            _redmineService.SetContext(context);
-            _redmineService.SetHttpClient();
-
-            // Получаем email пользователя из Redmine
-            var userInfo = await _redmineService.GetCurrentUserInfoAsync();
+            // Получаем информацию о пользователе
+            // Используем напрямую weldingRedmineService - ключ API уже задан при его создании
+            var userInfo = await _weldingRedmineService.GetCurrentUserInfoAsync();
             if (string.IsNullOrEmpty(userInfo?.User?.Mail))
             {
                 throw new InvalidOperationException("Не удалось получить email пользователя из Redmine.");

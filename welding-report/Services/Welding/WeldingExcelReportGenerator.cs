@@ -9,15 +9,14 @@
     using System;
     using System.Net;
 
-    public interface IExcelReportGenerator
+    public interface IWeldingExcelReportGenerator
     {
         Task<byte[]> GenerateIssueReport(WeldingIssueReportData data);
         Task<byte[]> GenerateProjectReport(WeldingProjectReportData data);
-        void SetApiKey(string apiKey);
 
     }
 
-    public class WeldingExcelReportGenerator : IExcelReportGenerator
+    public class WeldingExcelReportGenerator : IWeldingExcelReportGenerator
     {
         private readonly string _templatePath;
         private readonly string _worksheetName;
@@ -36,7 +35,8 @@
 
         public WeldingExcelReportGenerator(
             ILogger<WeldingExcelReportGenerator> logger,
-            IOptions<AppSettings> appSettings
+            IOptions<AppSettings> appSettings,
+            string apiKey
             )
         {
             _logger = logger;
@@ -48,14 +48,7 @@
             _maxRowHeight = appSettings.Value.MaxRowHeight;
             _maxPhotoColumnWidth = appSettings.Value.MaxPhotoColumnWidth;
 
-  
-        }
-
-        public void SetApiKey(string apiKey)
-        {
-            _apiKey = apiKey;
-            // Добавляем заголовок с API-ключом (как в HttpClient)
-            webClient.Headers.Add("X-Redmine-API-Key", _apiKey);
+            webClient.Headers.Add("X-Redmine-API-Key", apiKey);
         }
 
         public async Task<byte[]> GenerateIssueReport(WeldingIssueReportData data)

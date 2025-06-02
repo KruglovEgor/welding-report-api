@@ -17,12 +17,12 @@ namespace welding_report.Services.Supr
     {
         private readonly HttpClient _httpClient;
         private readonly RedmineSettings _settings;
-        private readonly ILogger<RedmineService> _logger;
+        private readonly ILogger<SuprRedmineService> _logger;
 
         public SuprRedmineService(
             IHttpClientFactory httpClientFactory,
             IOptions<RedmineSettings> redmineSettings,
-            ILogger<RedmineService> logger,
+            ILogger<SuprRedmineService> logger,
             string apiKey)
         {
 

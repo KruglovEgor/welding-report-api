@@ -16,30 +16,28 @@ public class WeldingReportController : ControllerBase
 {
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<WeldingReportController> _logger;
-    private readonly IExcelReportGenerator _excelGenerator;
-    private readonly IEmailService _emailService;
+    //private readonly IWeldingExcelReportGenerator _weldingExcelGenerator;
+    private readonly IEmailServiceFactory _emailServiceFactory;
     private readonly AppSettings _appSettings;
-    private readonly IRedmineService _redmineService;
+    private readonly IRedmineServiceFactory _redmineServiceFactory;
     private readonly INumberToText _numberToText;
     private readonly IRequestWordReportGenerator _wordReportGenerator;
 
     public WeldingReportController(
         IWebHostEnvironment env,
         ILogger<WeldingReportController> logger,
-        IExcelReportGenerator excelGenerator,
-        IEmailService emailService,
+        IEmailServiceFactory emailServiceFactory,
         IOptions<AppSettings> appSettings,
-        IRedmineService redmineService,
+        IRedmineServiceFactory redmineServiceFactory,
         INumberToText numberToText,
         IRequestWordReportGenerator wordReportGenerator
         )
     {
         _env = env;
         _logger = logger;
-        _excelGenerator = excelGenerator;
-        _emailService = emailService;
+        _emailServiceFactory = emailServiceFactory;
         _appSettings = appSettings.Value;
-        _redmineService = redmineService;
+        _redmineServiceFactory = redmineServiceFactory;
         _numberToText = numberToText;
         _wordReportGenerator = wordReportGenerator;
     }
@@ -53,8 +51,8 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
-            _redmineService.SetApiKey(apiKey);
-            var reportData = await _redmineService.GetRequestReportDataAsync(issueId);
+            var requestRedmineService = _redmineServiceFactory.CreateRequestService(apiKey);
+            var reportData = await requestRedmineService.GetRequestReportDataAsync(issueId);
             _numberToText.FillCostText(reportData);
 
             if (string.IsNullOrEmpty(reportData.CuratorEmail))
@@ -119,10 +117,11 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
-            _redmineService.SetApiKey(apiKey);
-            _excelGenerator.SetApiKey(apiKey);
-            var reportData = await _redmineService.GetWeldingIssueDataAsync(projectIdentifier, issueId);
-            var excelBytes = await _excelGenerator.GenerateIssueReport(reportData);
+            var weldingRedmineService = _redmineServiceFactory.CreateWeldingService(apiKey);
+            var weldingExcelGenerator = _redmineServiceFactory.CreateWeldingExcelGenerator(apiKey);
+            var reportData = await weldingRedmineService.GetWeldingIssueDataAsync(projectIdentifier, issueId);
+            var excelBytes = await weldingExcelGenerator.GenerateIssueReport(reportData);
+
 
             // Сохранение отчета
             reportPath = Path.Combine(
@@ -135,7 +134,8 @@ public class WeldingReportController : ControllerBase
 
             if (sendMail)
             {
-                await _emailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber, apiKey, "welding");
+                var weldingEmailService = _emailServiceFactory.CreateWeldingEmailService(apiKey);
+                await weldingEmailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber, apiKey);
 
                 // Удаление файла после отправки email
                 if (System.IO.File.Exists(reportPath))
@@ -188,10 +188,11 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
-            _redmineService.SetApiKey(apiKey);
-            _excelGenerator.SetApiKey(apiKey);
-            var projectData = await _redmineService.GetProjectReportDataAsync(projectIdentifier);
-            var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
+            var weldingRedmineService = _redmineServiceFactory.CreateWeldingService(apiKey);
+            var weldingExcelGenerator = _redmineServiceFactory.CreateWeldingExcelGenerator(apiKey);
+            var projectData = await weldingRedmineService.GetProjectReportDataAsync(projectIdentifier);
+            var excelBytes = await weldingExcelGenerator.GenerateProjectReport(projectData);
+
 
             // Сохранение отчета
             reportPath = Path.Combine(
@@ -205,7 +206,8 @@ public class WeldingReportController : ControllerBase
 
             if (sendMail)
             {
-                await _emailService.SendRedmineReportAsync(excelBytes, projectData.Name, apiKey, "welding");
+                var weldingEmailService = _emailServiceFactory.CreateWeldingEmailService(apiKey);
+                await weldingEmailService.SendRedmineReportAsync(excelBytes, projectData.Name, apiKey);
 
                 // Удаление файла после отправки email
                 if (System.IO.File.Exists(reportPath))
@@ -260,8 +262,8 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
-            _redmineService.SetApiKey(apiKey);
-            var projectData = await _redmineService.GetSuprGroupReportDataAsync(projectIdentifier, applicationNumber);
+            var suprRedmineService = _redmineServiceFactory.CreateSuprService(apiKey);
+            var projectData = await suprRedmineService.GetSuprGroupReportDataAsync(projectIdentifier, applicationNumber);
 
             //var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
 

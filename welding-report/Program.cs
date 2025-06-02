@@ -30,8 +30,8 @@ Console.WriteLine($"Created directories:\nUploads: {uploadsPath}\nReports: {repo
 
 
 builder.Services.AddControllers();
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IExcelReportGenerator, WeldingExcelReportGenerator>();
+//builder.Services.AddScoped<IEmailService, EmailService>();
+//builder.Services.AddScoped<IWeldingExcelReportGenerator, WeldingExcelReportGenerator>();
 builder.Services.AddScoped<INumberToText, NumberToText>();
 builder.Services.AddScoped<IRequestWordReportGenerator, RequestWordReportGenerator>();
 builder.Services.AddEndpointsApiExplorer();
@@ -41,15 +41,31 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Emai
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 builder.Services.Configure<RedmineSettings>(builder.Configuration.GetSection("RedmineSettings"));
 //builder.Services.AddHttpClient<IRedmineService, RedmineService>();
+
+
+// Регистрация HttpClient'ов
 builder.Services.AddHttpClient("Request")
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {
         ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
     });
+builder.Services.AddHttpClient("Welding")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+    });
+builder.Services.AddHttpClient("Supr")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+    });
+
+// Регистрация фабрик сервисов
+builder.Services.AddScoped<IRedmineServiceFactory, RedmineServiceFactory>();
+builder.Services.AddScoped<IEmailServiceFactory, EmailServiceFactory>();
 
 
 builder.Services.AddSwaggerGen();
-
 
 // Установите лицензионный контекст
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Для некоммерческого использованияs

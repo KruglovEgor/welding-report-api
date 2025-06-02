@@ -4,6 +4,7 @@ using System.Text.Json;
 using welding_report.Models;
 using System.Globalization;
 using DocumentFormat.OpenXml;
+using welding_report.Services.Supr;
 
 
 namespace welding_report.Services.Request
@@ -17,13 +18,13 @@ namespace welding_report.Services.Request
     {
         private readonly HttpClient _httpClient;
         private readonly RedmineSettings _settings;
-        private readonly ILogger<RedmineService> _logger;
+        private readonly ILogger<RequestRedmineService> _logger;
 
 
         public RequestRedmineService(
             IHttpClientFactory httpClientFactory,
             IOptions<RedmineSettings> redmineSettings,
-            ILogger<RedmineService> logger,
+            ILogger<RequestRedmineService> logger,
             string apiKey)
         {
             _settings = redmineSettings.Value;
