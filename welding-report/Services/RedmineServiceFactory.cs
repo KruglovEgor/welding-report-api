@@ -14,6 +14,8 @@ namespace welding_report.Services
         ISuprRedmineService CreateSuprService(string apiKey);
 
         IWeldingExcelReportGenerator CreateWeldingExcelGenerator(string apiKey);
+        ISuprExcelReportGenerator CreateSuprExcelGenerator();
+
     }
 
     public class RedmineServiceFactory : IRedmineServiceFactory
@@ -94,6 +96,17 @@ namespace welding_report.Services
                     _appSettings,
                     key);
             });
+        }
+
+
+        public ISuprExcelReportGenerator CreateSuprExcelGenerator()
+        {
+            var _suprExcelGenerator = new Lazy<ISuprExcelReportGenerator>(() =>
+            {
+                var logger = _loggerFactory.CreateLogger<SuprExcelReportGenerator>();
+                return new SuprExcelReportGenerator(logger, _appSettings);
+            });
+            return _suprExcelGenerator.Value;
         }
 
     }

@@ -264,60 +264,39 @@ public class WeldingReportController : ControllerBase
         {
             var suprRedmineService = _redmineServiceFactory.CreateSuprService(apiKey);
             var projectData = await suprRedmineService.GetSuprGroupReportDataAsync(projectIdentifier, applicationNumber);
+            var excelGenerator = _redmineServiceFactory.CreateSuprExcelGenerator();
+            var excelBytes = await excelGenerator.GenerateGroupReport(projectData);
 
-            //var excelBytes = await _excelGenerator.GenerateProjectReport(projectData);
+            // Определение пути для временного сохранения файла
+            string fileName = $"SUPR_{projectData.Factory}_{applicationNumber}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            reportPath = Path.Combine(
+                _env.ContentRootPath,
+                _appSettings.ReportStoragePath,
+                fileName
+            );
 
-            // Сохранение отчета
-            //reportPath = Path.Combine(
-            //    _env.ContentRootPath,
-            //    _appSettings.ReportStoragePath,
-            //    $"{projectData.Name}.xlsx"
-            //);
-
-            //Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
-            //await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
-
-            // Возвращаем файл и запускаем задачу на удаление после отправки
-            //var result = File(
-            //    excelBytes,
-            //    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            //    $"{projectData.Name}.xlsx"
-            //);
-
-            //// Запускаем удаление файла после возврата результата
-            //_ = Task.Run(async () => {
-            //    // Небольшая задержка для завершения отправки файла
-            //    await Task.Delay(1000);
-            //    if (System.IO.File.Exists(reportPath))
-            //    {
-            //        System.IO.File.Delete(reportPath);
-            //    }
-            //});
-
-            //return result;
-
-            // Создаем объект с структурированными данными для вывода
-            var result = new
-            {
-                factory = projectData.Factory,
-                installation = projectData.InstallationName,
-                techPosition = projectData.TechPositionName,
-                equipmentUnitNumber = projectData.EquipmentUnitNumber,
-                markAndManufacturer = projectData.MarkAndManufacturer,
-                createDate = projectData.CreateDate,
-                issues = projectData.suprIssueReportDatas.Select(kvp => new {
-                    number = kvp.Key,
-                    detail = kvp.Value.Detail,
-                    scanningPeriod = kvp.Value.ScanningPeriod,
-                    condition = kvp.Value.Condition,
-                    priority = kvp.Value.Priority,
-                    jobType = kvp.Value.JobType
-                }).ToList()
-            };
-
-            return Ok(result);
+            // Создаем директорию, если не существует
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
+            await System.IO.File.WriteAllBytesAsync(reportPath, excelBytes);
 
 
+            // Возвращаем файл для скачивания
+            var result = File(
+                excelBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName
+            );
+
+            // Удаляем временный файл после отправки
+            _ = Task.Run(async () => {
+                await Task.Delay(1000);
+                if (System.IO.File.Exists(reportPath))
+                {
+                    System.IO.File.Delete(reportPath);
+                }
+            });
+
+            return result;
         }
         catch (Exception ex)
         {
