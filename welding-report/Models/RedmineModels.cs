@@ -231,16 +231,11 @@ namespace welding_report.Models
 
         public string Factory { get; set; }
 
-        public string InstallationName { get; set; }
-
-        public string TechPositionName { get; set; }
-
-        public string EquipmentUnitNumber { get; set; }
-
         //public string EquipmentType { get; set; }
 
-        public string MarkAndManufacturer { get; set; }
         public DateTime CreateDate { get; set; }
+
+        public int ApplicationNumber { get; set; }
     }
 
 
@@ -251,5 +246,14 @@ namespace welding_report.Models
         public string Condition { get; set; }
         public string Priority { get; set; }
         public string JobType { get; set; }
+
+
+        public string InstallationName { get; set; }
+
+        public string TechPositionName { get; set; }
+
+        public string EquipmentUnitNumber { get; set; }
+
+        public string MarkAndManufacturer { get; set; }
     }
 }

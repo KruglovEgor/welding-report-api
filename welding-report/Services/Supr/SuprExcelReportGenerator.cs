@@ -33,18 +33,18 @@ namespace welding_report.Services.Supr
             using var package = new ExcelPackage(templateFile);
             var worksheet = package.Workbook.Worksheets[0]; // Берем первый лист из шаблона
 
+            // Заполняем номер заявки
+            worksheet.Cells[5, 8].Value += $"{data.ApplicationNumber} от __.__ 20__г";
+
+
             int count = data.suprIssueReportDatas.Count;
             int startRow = 10;
 
-
-            // Заполняем шапку отчета
+            // Указываем завод
             worksheet.Cells[startRow, 3].Value = data.Factory;
-            worksheet.Cells[startRow, 4].Value = data.InstallationName;
-            worksheet.Cells[startRow, 5].Value = data.TechPositionName;
-            worksheet.Cells[startRow, 6].Value = data.EquipmentUnitNumber;
-            worksheet.Cells[startRow, 8].Value = data.MarkAndManufacturer;
 
-            var groupParametersColumns = new[] { 3, 4, 5, 6, 7, 8 };
+            //TODO: убрать 7 как появится информация что делать с данной колонкой
+            var groupParametersColumns = new[] { 3, 7 };
 
             foreach(var i in groupParametersColumns)
             {
@@ -54,6 +54,10 @@ namespace welding_report.Services.Supr
             }
 
             int currentRow = startRow;
+
+            // Заполняем данные и запоминаем значения для каждой строки
+            var cellValues = new Dictionary<int, Dictionary<int, string>>();
+            var columnsToMerge = new[] { 4, 5, 6, 8 }; // Колонки, для которых нужно объединять
 
             // Заполняем данные
             foreach (var issue in data.suprIssueReportDatas.OrderBy(x => x.Key))
@@ -65,12 +69,30 @@ namespace welding_report.Services.Supr
                 worksheet.Cells[currentRow, 12].Value = issue.Value.Priority;
                 worksheet.Cells[currentRow, 13].Value = issue.Value.JobType;
 
+                worksheet.Cells[currentRow, 4].Value = issue.Value.InstallationName;
+                worksheet.Cells[currentRow, 5].Value = issue.Value.TechPositionName;
+                worksheet.Cells[currentRow, 6].Value = issue.Value.EquipmentUnitNumber;
+                worksheet.Cells[currentRow, 8].Value = issue.Value.MarkAndManufacturer;
+
+                // Запоминаем значения для этой строки
+                cellValues[currentRow] = new Dictionary<int, string>();
+                foreach (var col in columnsToMerge)
+                {
+                    cellValues[currentRow][col] = worksheet.Cells[currentRow, col].Text;
+                }
 
                 ApplyBorders(worksheet.Cells[currentRow, 2]);
+                ApplyBorders(worksheet.Cells[currentRow, 4, currentRow, 8]);
                 ApplyBorders(worksheet.Cells[currentRow, 9, currentRow, 13]);
 
                 worksheet.Row(currentRow).CustomHeight = false;
                 currentRow++;
+            }
+
+            // Объединяем ячейки с одинаковыми значениями
+            foreach (var col in columnsToMerge)
+            {
+                MergeConsecutiveCellsWithSameValue(worksheet, cellValues, startRow, currentRow - 1, col);
             }
 
 
@@ -105,5 +127,41 @@ namespace welding_report.Services.Supr
             range.Style.Border.Right.Style = ExcelBorderStyle.Thin;
             range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
         }
+
+
+        // Метод для объединения последовательных ячеек с одинаковым значением
+        private void MergeConsecutiveCellsWithSameValue(ExcelWorksheet worksheet, Dictionary<int, Dictionary<int, string>> cellValues, int startRow, int endRow, int column)
+        {
+            if (startRow >= endRow)
+                return;
+
+            int mergeStartRow = startRow;
+            string currentValue = cellValues[mergeStartRow][column];
+
+            for (int row = startRow + 1; row <= endRow + 1; row++) // +1 для обработки последней группы
+            {
+                bool isLastRow = row > endRow;
+                bool valueChanged = isLastRow || currentValue != cellValues[row][column];
+
+                if (valueChanged)
+                {
+                    // Если было две или больше последовательных ячеек с одинаковым значением, объединяем их
+                    if (row - 1 > mergeStartRow)
+                    {
+                        var rangeToMerge = worksheet.Cells[mergeStartRow, column, row - 1, column];
+                        rangeToMerge.Merge = true;
+                        ApplyBorders(rangeToMerge);
+                    }
+
+                    // Начинаем новую группу ячеек
+                    if (!isLastRow)
+                    {
+                        mergeStartRow = row;
+                        currentValue = cellValues[row][column];
+                    }
+                }
+            }
+        }
+
     }
 }

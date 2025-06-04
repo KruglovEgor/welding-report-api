@@ -45,6 +45,8 @@ namespace welding_report.Services.Supr
         {
             
             var reportData = new SuprGroupReportData();
+            
+            reportData.ApplicationNumber = applicationNumber;
 
             var response = await _httpClient.GetAsync($"projects/{projectIdentifier}/issues.json?cf_38={applicationNumber}");
             response.EnsureSuccessStatusCode();
@@ -65,7 +67,6 @@ namespace welding_report.Services.Supr
                 {
                     reportData.Factory = issue.Project.Name.Split(' ')[0];
 
-
                     // Парсинг даты создания
                     if (DateTime.TryParse(issue.CreateDate, out DateTime createdDate))
                     {
@@ -76,40 +77,6 @@ namespace welding_report.Services.Supr
                         reportData.CreateDate = DateTime.Now;
                     }
 
-                    string mark = "";
-                    string manufacturer = "";
-
-                    foreach (var field in issue.CustomFields)
-                    {
-                        switch (field.Id)
-                        {
-                            case 1: // Название установки
-                                reportData.InstallationName = field.Value.GetString();
-                                break;
-                            case 18: // Тех. позиция
-                                reportData.TechPositionName = field.Value.GetString();
-                                break;
-                            case 53: // Номер оборудования
-                                reportData.EquipmentUnitNumber = field.Value.GetString();
-                                break;
-                            case 3: // Марка
-                                mark = field.Value.GetString();
-                                break;
-                            case 40: // Изготовитель
-                                manufacturer = field.Value.GetString();
-                                break;
-                        }
-                    }
-
-                    if (string.IsNullOrEmpty(mark))
-                    {
-                        reportData.MarkAndManufacturer = manufacturer;
-                    }
-                    else
-                    {
-                        reportData.MarkAndManufacturer = string.IsNullOrEmpty(manufacturer) ? mark : $"{mark}, {manufacturer}";
-                    }
-
                     first = false;
                 }
 
@@ -118,6 +85,9 @@ namespace welding_report.Services.Supr
 
                 suprIssueReportData.Detail = issue.Subject;
                 suprIssueReportData.Priority = issue.Priority.Name;
+
+                string mark = "";
+                string manufacturer = "";
 
                 foreach (var field in issue.CustomFields)
                 {
@@ -159,7 +129,31 @@ namespace welding_report.Services.Supr
                             }
                             suprIssueReportData.JobType = string.Join(", ", values);
                             break;
+                        case 1: // Название установки
+                            suprIssueReportData.InstallationName = field.Value.GetString();
+                            break;
+                        case 18: // Тех. позиция
+                            suprIssueReportData.TechPositionName = field.Value.GetString();
+                            break;
+                        case 53: // Номер оборудования
+                            suprIssueReportData.EquipmentUnitNumber = field.Value.GetString();
+                            break;
+                        case 3: // Марка
+                            mark = field.Value.GetString();
+                            break;
+                        case 40: // Изготовитель
+                            manufacturer = field.Value.GetString();
+                            break;
                     }
+                }
+
+                if (string.IsNullOrEmpty(mark))
+                {
+                    suprIssueReportData.MarkAndManufacturer = manufacturer;
+                }
+                else
+                {
+                    suprIssueReportData.MarkAndManufacturer = string.IsNullOrEmpty(manufacturer) ? mark : $"{mark}, {manufacturer}";
                 }
 
                 // Проверяем, является ли текущая дата создания более ранней
