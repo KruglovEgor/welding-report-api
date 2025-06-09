@@ -4,6 +4,8 @@ using Microsoft.Extensions.Options;
 using System.Drawing;
 using welding_report.Models;
 using DocumentFormat.OpenXml.Spreadsheet;
+using welding_report.Models.Supr;
+using System.Security.Cryptography.Xml;
 
 namespace welding_report.Services.Supr
 {
@@ -16,15 +18,18 @@ namespace welding_report.Services.Supr
     {
         private readonly string _templatePath;
         private readonly ILogger<SuprExcelReportGenerator> _logger;
+        private readonly SuprSignatures _signatures;
 
         public SuprExcelReportGenerator(
             ILogger<SuprExcelReportGenerator> logger,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            IOptions<SuprSignatures> signatures)
         {
             _logger = logger;
             _templatePath = Path.Combine(
                 appSettings.Value.TemplatePath,
                 "SuprReportTemplate.xlsx");
+            _signatures = signatures.Value;
         }
 
         public async Task<byte[]> GenerateGroupReport(SuprGroupReportData data)
@@ -35,23 +40,10 @@ namespace welding_report.Services.Supr
 
             // Заполняем номер заявки
             worksheet.Cells[5, 8].Value += $"{data.ApplicationNumber} от __.__ 20__г";
-
+            worksheet.Cells[2, 12].Value += data.ContractNumber + ".";
 
             int count = data.suprIssueReportDatas.Count;
             int startRow = 10;
-
-            // Указываем завод
-            worksheet.Cells[startRow, 3].Value = data.Factory;
-
-            //TODO: убрать 7 как появится информация что делать с данной колонкой
-            var groupParametersColumns = new[] { 3, 7 };
-
-            foreach(var i in groupParametersColumns)
-            {
-                var rangeToMerge = worksheet.Cells[startRow, i, startRow+count-1, i];
-                rangeToMerge.Merge = true;
-                ApplyBorders(rangeToMerge);
-            }
 
             int currentRow = startRow;
 
@@ -63,6 +55,7 @@ namespace welding_report.Services.Supr
             foreach (var issue in data.suprIssueReportDatas.OrderBy(x => x.Key))
             {
                 worksheet.Cells[currentRow, 2].Value = issue.Key;
+                worksheet.Cells[currentRow, 3].Value = data.Factory;
                 worksheet.Cells[currentRow, 9].Value = issue.Value.Detail;
                 worksheet.Cells[currentRow, 10].Value = issue.Value.ScanningPeriod;
                 worksheet.Cells[currentRow, 11].Value = issue.Value.Condition;
@@ -74,46 +67,47 @@ namespace welding_report.Services.Supr
                 worksheet.Cells[currentRow, 6].Value = issue.Value.EquipmentUnitNumber;
                 worksheet.Cells[currentRow, 8].Value = issue.Value.MarkAndManufacturer;
 
-                // Запоминаем значения для этой строки
-                cellValues[currentRow] = new Dictionary<int, string>();
-                foreach (var col in columnsToMerge)
-                {
-                    cellValues[currentRow][col] = worksheet.Cells[currentRow, col].Text;
-                }
 
-                ApplyBorders(worksheet.Cells[currentRow, 2]);
-                ApplyBorders(worksheet.Cells[currentRow, 4, currentRow, 8]);
-                ApplyBorders(worksheet.Cells[currentRow, 9, currentRow, 13]);
+
+                ApplyBorders(worksheet.Cells[currentRow, 2, currentRow, 13]);
+                //ApplyBorders(worksheet.Cells[currentRow, 4, currentRow, 8]);
+                //ApplyBorders(worksheet.Cells[currentRow, 9, currentRow, 13]);
 
                 worksheet.Row(currentRow).CustomHeight = false;
                 currentRow++;
             }
 
-            // Объединяем ячейки с одинаковыми значениями
-            foreach (var col in columnsToMerge)
-            {
-                MergeConsecutiveCellsWithSameValue(worksheet, cellValues, startRow, currentRow - 1, col);
-            }
-
-
             // Добавляем две константные строки ниже таблицы
             currentRow += 3; 
 
-            worksheet.Cells[currentRow, 4].Value = "Исполнитель";
-            worksheet.Cells[currentRow+1, 4].Value = "Генеральный директор ";
-            worksheet.Cells[currentRow + 2, 4].Value = "ООО \"ЛИНК\"";
-            worksheet.Cells[currentRow + 4, 4].Value = "________________/М.Р. Усманов";
+            worksheet.Cells[currentRow, 4].Value = _signatures.Executor["Role"];
+            worksheet.Cells[currentRow+1, 4].Value = _signatures.Executor["JobTitle"];
+            worksheet.Cells[currentRow + 2, 4].Value = _signatures.Executor["Company"];
+            worksheet.Cells[currentRow + 4, 4].Value = _signatures.Executor["Signature"];
             worksheet.Cells[currentRow, 4, currentRow + 4, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
             worksheet.Cells[currentRow, 4, currentRow + 4, 4].Style.Font.Size = 16;
             worksheet.Cells[currentRow, 4, currentRow + 4, 4].Style.WrapText = false;
 
-            worksheet.Cells[currentRow, 10].Value = "Заказчик";
-            worksheet.Cells[currentRow + 1, 10].Value = "Генеральный директор ";
-            worksheet.Cells[currentRow + 2, 10].Value = "ООО \"ЛУКОЙЛ-Нижегороднефтеоргсинтез\"";
-            worksheet.Cells[currentRow + 4, 10].Value = "________________/С.М. Андронов";
+            worksheet.Cells[currentRow, 10].Value = _signatures.Customer["Role"];
+            worksheet.Cells[currentRow + 1, 10].Value = _signatures.Customer["JobTitle"];
+            worksheet.Cells[currentRow + 2, 10].Value = _signatures.Customer["Company"];
+            worksheet.Cells[currentRow + 4, 10].Value = _signatures.Customer["Signature"];
             worksheet.Cells[currentRow, 10, currentRow + 4, 10].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
             worksheet.Cells[currentRow, 10, currentRow + 4, 10].Style.Font.Size = 16;
             worksheet.Cells[currentRow, 10, currentRow + 4, 10].Style.WrapText = false;
+
+
+            if (!string.IsNullOrEmpty(data.CustomerRepresentative))
+            {
+                worksheet.Cells[currentRow + 4, 10].Value = $"________________/{data.CustomerRepresentative}";
+                _logger.LogInformation("Customer representative: {Representative}", data.CustomerRepresentative);
+            }
+            if (!string.IsNullOrEmpty(data.CustomerCompany))
+            {
+                worksheet.Cells[currentRow + 2, 10].Value = data.CustomerCompany;
+                _logger.LogInformation("Customer company: {Company}", data.CustomerCompany);
+            }
+
 
             return package.GetAsByteArray();
         }
@@ -128,40 +122,6 @@ namespace welding_report.Services.Supr
             range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
         }
 
-
-        // Метод для объединения последовательных ячеек с одинаковым значением
-        private void MergeConsecutiveCellsWithSameValue(ExcelWorksheet worksheet, Dictionary<int, Dictionary<int, string>> cellValues, int startRow, int endRow, int column)
-        {
-            if (startRow >= endRow)
-                return;
-
-            int mergeStartRow = startRow;
-            string currentValue = cellValues[mergeStartRow][column];
-
-            for (int row = startRow + 1; row <= endRow + 1; row++) // +1 для обработки последней группы
-            {
-                bool isLastRow = row > endRow;
-                bool valueChanged = isLastRow || currentValue != cellValues[row][column];
-
-                if (valueChanged)
-                {
-                    // Если было две или больше последовательных ячеек с одинаковым значением, объединяем их
-                    if (row - 1 > mergeStartRow)
-                    {
-                        var rangeToMerge = worksheet.Cells[mergeStartRow, column, row - 1, column];
-                        rangeToMerge.Merge = true;
-                        ApplyBorders(rangeToMerge);
-                    }
-
-                    // Начинаем новую группу ячеек
-                    if (!isLastRow)
-                    {
-                        mergeStartRow = row;
-                        currentValue = cellValues[row][column];
-                    }
-                }
-            }
-        }
 
     }
 }

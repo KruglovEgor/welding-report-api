@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using welding_report.Models;
+using welding_report.Models.Supr;
 using welding_report.Services.Request;
 using welding_report.Services.Supr;
 using welding_report.Services.Welding;
@@ -24,6 +25,7 @@ namespace welding_report.Services
         private readonly IOptions<RedmineSettings> _settings;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IOptions<AppSettings> _appSettings;
+        private readonly IOptions<SuprSignatures> _suprSignatures;
 
 
         private readonly ConcurrentDictionary<string, IRequestRedmineService> _requestServiceCache =
@@ -42,13 +44,15 @@ namespace welding_report.Services
             IHttpClientFactory httpClientFactory,
             IOptions<RedmineSettings> settings,
             ILoggerFactory loggerFactory,
-            IOptions<AppSettings> appSettings
+            IOptions<AppSettings> appSettings,
+            IOptions<SuprSignatures> suprSignatures
             )
         {
             _httpClientFactory = httpClientFactory;
             _settings = settings;
             _loggerFactory = loggerFactory;
             _appSettings = appSettings;
+            _suprSignatures = suprSignatures;
         }
 
         public IRequestRedmineService CreateRequestService(string apiKey)
@@ -104,7 +108,7 @@ namespace welding_report.Services
             var _suprExcelGenerator = new Lazy<ISuprExcelReportGenerator>(() =>
             {
                 var logger = _loggerFactory.CreateLogger<SuprExcelReportGenerator>();
-                return new SuprExcelReportGenerator(logger, _appSettings);
+                return new SuprExcelReportGenerator(logger, _appSettings, _suprSignatures);
             });
             return _suprExcelGenerator.Value;
         }

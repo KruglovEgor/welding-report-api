@@ -3,6 +3,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using OfficeOpenXml;
 using welding_report.Models;
+using welding_report.Models.Supr;
 using welding_report.Services;
 using welding_report.Services.Request;
 using welding_report.Services.Welding;
@@ -41,6 +42,7 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Emai
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 builder.Services.Configure<RedmineSettings>(builder.Configuration.GetSection("RedmineSettings"));
 //builder.Services.AddHttpClient<IRedmineService, RedmineService>();
+builder.Services.Configure<SuprSignatures>(builder.Configuration.GetSection("SuprSignatures"));
 
 
 // Регистрация HttpClient'ов

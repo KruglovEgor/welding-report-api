@@ -43,10 +43,50 @@ namespace welding_report.Services.Supr
 
         public async Task<SuprGroupReportData> GetSuprGroupReportDataAsync(string projectIdentifier, int applicationNumber)
         {
-            
+
             var reportData = new SuprGroupReportData();
-            
+
             reportData.ApplicationNumber = applicationNumber;
+
+            var projectResponse = await _httpClient.GetAsync($"projects/{projectIdentifier}.json");
+            projectResponse.EnsureSuccessStatusCode();
+
+            var projectResponseData = await projectResponse.Content.ReadFromJsonAsync<SuprProjectRespose>();
+            if (projectResponseData?.Project != null)
+            {
+                string projectDescription = projectResponseData.Project.Description;
+                int index = projectDescription.IndexOf("от ");
+                if (index != -1)
+                {
+                    reportData.CustomerCompany = projectDescription.Substring(index+3).Trim();
+                }
+
+                foreach(var field in projectResponseData.Project.CustomFields)
+                {
+                    switch (field.Id)
+                    {
+                        case 61:
+                            reportData.ContractNumber = field.Value.GetString().Trim();
+                            break;
+                        case 62:
+                            string result = "";
+                            var fullName = field.Value.GetString();
+                            var parts = fullName.Split(' ');
+                            if (parts.Length >= 2)
+                            {
+                                for (int i = 1; i < parts.Length; i++)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(parts[i]))
+                                        result += parts[i][0] + ".";
+                                }
+                            }
+                            result += " " + parts[0];
+                            reportData.CustomerRepresentative = result.Trim();
+                            break;
+                    }
+                }
+
+            }
 
             var response = await _httpClient.GetAsync($"projects/{projectIdentifier}/issues.json?cf_38={applicationNumber}");
             response.EnsureSuccessStatusCode();

@@ -192,10 +192,29 @@ namespace welding_report.Models
     }
 
 
+    public class SuprProjectRespose
+    {
+        [JsonPropertyName("project")]
+        public SuprProject Project { get; set; }
+
+    }
+
+    public class SuprProject
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+        [JsonPropertyName("custom_fields")]
+        public List<CustomField> CustomFields { get; set; }
+
+    }
+    
     public class SuprIssueListResponse
     {
         [JsonPropertyName("issues")]
         public List<SuprIssue> Issues { get; set; }
+
     }
 
 
@@ -236,6 +255,9 @@ namespace welding_report.Models
         public DateTime CreateDate { get; set; }
 
         public int ApplicationNumber { get; set; }
+        public string CustomerCompany { get; set; }
+        public string CustomerRepresentative { get; set; }
+        public string ContractNumber { get; set; }
     }
 
 
