@@ -51,17 +51,22 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
+            _logger.LogInformation("Получен запрос на генерацию документа из заявки. IssueId: {IssueId}", issueId);
+
+            _logger.LogInformation("Начало обработки запроса для заявки {IssueId}", issueId);
             var requestRedmineService = _redmineServiceFactory.CreateRequestService(apiKey);
             var reportData = await requestRedmineService.GetRequestReportDataAsync(issueId);
             _numberToText.FillCostText(reportData);
 
             if (string.IsNullOrEmpty(reportData.CuratorEmail))
             {
-                _logger.LogWarning("CuratorEmail is empty for issue {IssueId}", issueId);
+                _logger.LogWarning("CuratorEmail отсутствует для заявки {IssueId}", issueId);
             }
 
+            _logger.LogInformation("Начало создания документа Word для заявки {IssueId}", issueId);
             // Генерация документа
             var docBytes = _wordReportGenerator.GenerateRequestReport(reportData);
+            _logger.LogInformation("Документ Word успешно сгенерирован для заявки {IssueId}", issueId);
 
             // Сохранение файла
             reportPath = Path.Combine(
@@ -90,6 +95,7 @@ public class WeldingReportController : ControllerBase
                 }
             });
 
+            _logger.LogInformation("Документ успешно сгенерирован и отправлен клиенту для заявки {IssueId}", issueId);
             return result;
         }
         catch (Exception ex)
@@ -117,10 +123,14 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
+            _logger.LogInformation("Получен запрос на генерацию отчета по сварке. IssueId: {IssueId}, ProjectIdentifier: {ProjectIdentifier}, SendMail: {SendMail}", issueId, projectIdentifier, sendMail);
             var weldingRedmineService = _redmineServiceFactory.CreateWeldingService(apiKey);
             var weldingExcelGenerator = _redmineServiceFactory.CreateWeldingExcelGenerator(apiKey);
+            _logger.LogInformation("Начало обработки запроса для отчета по сварке {IssueId}", issueId);
             var reportData = await weldingRedmineService.GetWeldingIssueDataAsync(projectIdentifier, issueId);
+            _logger.LogInformation("Начало создания Excel документа для отчета по сварке {IssueId}", issueId);
             var excelBytes = await weldingExcelGenerator.GenerateIssueReport(reportData);
+            _logger.LogInformation("Excel документ успешно сгенерирован для отчета по сварке {IssueId}", issueId);
 
 
             // Сохранение отчета
@@ -135,7 +145,9 @@ public class WeldingReportController : ControllerBase
             if (sendMail)
             {
                 var weldingEmailService = _emailServiceFactory.CreateWeldingEmailService(apiKey);
+                _logger.LogInformation("Начало отправки отчета {IssueId} по сварке по email", issueId);
                 await weldingEmailService.SendRedmineReportAsync(excelBytes, reportData.ReportNumber, apiKey);
+                _logger.LogInformation("Отчет по сварке {IssueId} успешно отправлен по email", issueId);
 
                 // Удаление файла после отправки email
                 if (System.IO.File.Exists(reportPath))
@@ -162,7 +174,7 @@ public class WeldingReportController : ControllerBase
                     System.IO.File.Delete(reportPath);
                 }
             });
-
+            _logger.LogInformation("Документ успешно сгенерирован и отправлен клиенту для отчета по сварке {IssueId}", issueId);
             return result;
         }
         catch (Exception ex)
@@ -188,11 +200,14 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
+            _logger.LogInformation("Получен запрос на генерацию отчета по проекту сварки. ProjectIdentifier: {ProjectIdentifier}, SendMail: {SendMail}", projectIdentifier, sendMail);
             var weldingRedmineService = _redmineServiceFactory.CreateWeldingService(apiKey);
             var weldingExcelGenerator = _redmineServiceFactory.CreateWeldingExcelGenerator(apiKey);
+            _logger.LogInformation("Начало обработки запроса для отчета по проекту {ProjectIdentifier}", projectIdentifier);
             var projectData = await weldingRedmineService.GetProjectReportDataAsync(projectIdentifier);
+            _logger.LogInformation("Начало создания Excel документа для проекта {ProjectName}", projectData.Name);
             var excelBytes = await weldingExcelGenerator.GenerateProjectReport(projectData);
-
+            _logger.LogInformation("Excel документ успешно сгенерирован для проекта {ProjectName}", projectData.Name);
 
             // Сохранение отчета
             reportPath = Path.Combine(
@@ -207,7 +222,9 @@ public class WeldingReportController : ControllerBase
             if (sendMail)
             {
                 var weldingEmailService = _emailServiceFactory.CreateWeldingEmailService(apiKey);
+                _logger.LogInformation("Начало отправки отчета по проекту {ProjectName} по email", projectData.Name);
                 await weldingEmailService.SendRedmineReportAsync(excelBytes, projectData.Name, apiKey);
+                _logger.LogInformation("Отчет по проекту {ProjectName} успешно отправлен по email", projectData.Name);
 
                 // Удаление файла после отправки email
                 if (System.IO.File.Exists(reportPath))
@@ -234,6 +251,7 @@ public class WeldingReportController : ControllerBase
                     System.IO.File.Delete(reportPath);
                 }
             });
+            _logger.LogInformation("Документ успешно сгенерирован и отправлен клиенту для проекта {ProjectName}", projectData.Name);
 
             return result;
         }
@@ -262,10 +280,15 @@ public class WeldingReportController : ControllerBase
         string reportPath = string.Empty;
         try
         {
+            _logger.LogInformation("Получен запрос на генерацию отчета SUPR. ProjectIdentifier: {ProjectIdentifier}, ApplicationNumber: {ApplicationNumber}", projectIdentifier, applicationNumber);
             var suprRedmineService = _redmineServiceFactory.CreateSuprService(apiKey);
+            _logger.LogInformation("Начало обработки запроса SUPR для проекта {ProjectIdentifier}, заявка {ApplicationNumber}", projectIdentifier, applicationNumber);
             var projectData = await suprRedmineService.GetSuprGroupReportDataAsync(projectIdentifier, applicationNumber);
             var excelGenerator = _redmineServiceFactory.CreateSuprExcelGenerator();
+            _logger.LogInformation("Начало создания Excel документа SUPR для предприятия {Factory}, заявка {ApplicationNumber}", projectData.Factory, applicationNumber);
             var excelBytes = await excelGenerator.GenerateGroupReport(projectData);
+            _logger.LogInformation("Excel документ SUPR успешно сгенерирован для предприятия {Factory}, заявка {ApplicationNumber}", projectData.Factory, applicationNumber);
+
 
             // Определение пути для временного сохранения файла
             string fileName = $"SUPR_{projectData.Factory}_{applicationNumber}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
@@ -295,7 +318,7 @@ public class WeldingReportController : ControllerBase
                     System.IO.File.Delete(reportPath);
                 }
             });
-
+            _logger.LogInformation("Документ SUPR успешно сгенерирован и отправлен клиенту для предприятия {Factory}, заявка {ApplicationNumber}", projectData.Factory, applicationNumber);
             return result;
         }
         catch (Exception ex)
