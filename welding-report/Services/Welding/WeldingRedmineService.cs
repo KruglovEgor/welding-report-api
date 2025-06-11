@@ -63,7 +63,7 @@ namespace welding_report.Services.Welding
                     if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                     {
                         issueReportData.JointsCountPlan = parsedValue;
-                        _logger.LogInformation($"Parsed JointsCountPlan: {issueReportData.JointsCountFact}");
+                        //_logger.LogInformation($"Parsed JointsCountPlan: {issueReportData.JointsCountFact}");
                     }
                 }
 
@@ -73,7 +73,7 @@ namespace welding_report.Services.Welding
                     if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                     {
                         issueReportData.DiametrInchesPlan = Math.Round(parsedValue, 2);
-                        _logger.LogInformation($"Parsed DiametrInchesPlan: {issueReportData.JointsCountFact}");
+                        //_logger.LogInformation($"Parsed DiametrInchesPlan: {issueReportData.JointsCountFact}");
                     }
                 }
 
@@ -83,7 +83,7 @@ namespace welding_report.Services.Welding
                     if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                     {
                         issueReportData.DiametrInchesFact = Math.Round(parsedValue, 2);
-                        _logger.LogInformation($"Parsed DiametrInchesFact: {issueReportData.JointsCountFact}");
+                        //_logger.LogInformation($"Parsed DiametrInchesFact: {issueReportData.JointsCountFact}");
                     }
                 }
             }
@@ -107,7 +107,7 @@ namespace welding_report.Services.Welding
                         if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                         {
                             group.DiameterMm = parsedValue;
-                            _logger.LogInformation($"Parsed Diam: {group.DiameterMm}");
+                            //_logger.LogInformation($"Parsed Diam: {group.DiameterMm}");
                         }
                     }
 
@@ -118,7 +118,7 @@ namespace welding_report.Services.Welding
                         if (double.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                         {
                             group.DiameterInches = Math.Round(parsedValue, 2);
-                            _logger.LogInformation($"Parsed Inches: {group.DiameterInches}");
+                            //_logger.LogInformation($"Parsed Inches: {group.DiameterInches}");
                         }
                     }
 
@@ -130,20 +130,20 @@ namespace welding_report.Services.Welding
                         if (int.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue))
                         {
                             group.ActParagraph = parsedValue;
-                            _logger.LogInformation($"Parsed ActParagraph: {group.ActParagraph}");
+                            //_logger.LogInformation($"Parsed ActParagraph: {group.ActParagraph}");
                         }
                     }
 
                     if (field.Name == "Тип оборудования")
                     {
                         group.EquipmentType = field.Value.GetString();
-                        _logger.LogInformation($"Parsed EquipmentType: {group.EquipmentType}");
+                        //_logger.LogInformation($"Parsed EquipmentType: {group.EquipmentType}");
                     }
 
                     if (field.Name == "№ трубопровода/аппарата")
                     {
                         group.PipelineNumber = field.Value.GetString();
-                        _logger.LogInformation($"Parsed PipelineNumber: {group.PipelineNumber}");
+                        //_logger.LogInformation($"Parsed PipelineNumber: {group.PipelineNumber}");
                     }
 
                     if (field.Name == "Количество стыков")
@@ -153,7 +153,7 @@ namespace welding_report.Services.Welding
                         {
                             group.JointsCount = parsedValue;
                             issueReportData.JointsCountFact += parsedValue;
-                            _logger.LogInformation($"Parsed JointsCount: {group.DiameterInches}");
+                            //_logger.LogInformation($"Parsed JointsCount: {group.DiameterInches}");
                         }
                     }
                 }
@@ -190,7 +190,7 @@ namespace welding_report.Services.Welding
                 }
 
                 group.Entries = entries.Values.ToList();
-                _logger.LogInformation($"Entries: {entries.Values.ToList()}");
+                //_logger.LogInformation($"Entries: {entries.Values.ToList()}");
                 issueReportData.Groups.Add(group);
             }
 

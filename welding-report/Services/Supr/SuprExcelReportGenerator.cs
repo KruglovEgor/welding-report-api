@@ -100,12 +100,12 @@ namespace welding_report.Services.Supr
             if (!string.IsNullOrEmpty(data.CustomerRepresentative))
             {
                 worksheet.Cells[currentRow + 4, 10].Value = $"________________/{data.CustomerRepresentative}";
-                _logger.LogInformation("Customer representative: {Representative}", data.CustomerRepresentative);
+                //_logger.LogInformation("Customer representative: {Representative}", data.CustomerRepresentative);
             }
             if (!string.IsNullOrEmpty(data.CustomerCompany))
             {
                 worksheet.Cells[currentRow + 2, 10].Value = data.CustomerCompany;
-                _logger.LogInformation("Customer company: {Company}", data.CustomerCompany);
+                //_logger.LogInformation("Customer company: {Company}", data.CustomerCompany);
             }
 
 

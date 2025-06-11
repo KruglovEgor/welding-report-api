@@ -156,7 +156,7 @@
             {
                 foreach (var group in data.Groups)
                 {
-                    _logger.LogInformation($"Group: {group.ToString()}");
+                    //_logger.LogInformation($"Group: {group.ToString()}");
                     var groupStartRow = innerRow;
 
                     worksheet.Cells[innerRow, 1].Value = data.ReportNumber;
@@ -191,7 +191,7 @@
                         {
                             try
                             {
-                                _logger.LogInformation($"{sortedJoints} - {photoUrl}");
+                                //_logger.LogInformation($"{sortedJoints} - {photoUrl}");
 
                                 byte[] imageBytes = webClient.DownloadData(photoUrl);
 
@@ -290,7 +290,7 @@
                 int newWidth = (int)(bitmap.Width * scale);
                 int newHeight = (int)(bitmap.Height * scale);
 
-                _logger.LogInformation($"xOf: {xOffset}, newWid: {newWidth}, value: {(xOffset + newWidth) / 7.0}, maxWid: {_maxPhotoColumnWidth}");
+                //_logger.LogInformation($"xOf: {xOffset}, newWid: {newWidth}, value: {(xOffset + newWidth) / 7.0}, maxWid: {_maxPhotoColumnWidth}");
 
                 if ((xOffset+newWidth)/7.0 > _maxPhotoColumnWidth)
                 {
