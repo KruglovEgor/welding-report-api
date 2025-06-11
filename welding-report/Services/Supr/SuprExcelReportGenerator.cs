@@ -51,8 +51,12 @@ namespace welding_report.Services.Supr
             var cellValues = new Dictionary<int, Dictionary<int, string>>();
             var columnsToMerge = new[] { 4, 5, 6, 8 }; // Колонки, для которых нужно объединять
 
+            worksheet.Cells[7, 2, 7, 13].AutoFilter = true;
+
             // Заполняем данные
-            foreach (var issue in data.suprIssueReportDatas.OrderBy(x => x.Key))
+            foreach (var issue in data.suprIssueReportDatas
+                .OrderBy(x => x.Value.InstallationName)
+                .ThenBy(x => x.Value.TechPositionName))
             {
                 worksheet.Cells[currentRow, 2].Value = issue.Key;
                 worksheet.Cells[currentRow, 3].Value = data.Factory;
