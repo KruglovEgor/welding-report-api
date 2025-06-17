@@ -42,6 +42,12 @@ public class WeldingReportController : ControllerBase
         _wordReportGenerator = wordReportGenerator;
     }
 
+    /// <summary>
+    /// Генерирует Word-документ по заявке из pr_redmine и возвращает его пользователю.
+    /// </summary>
+    /// <param name="issueId">ID заявки в Redmine (по умолчанию 45).</param>
+    /// <param name="apiKey">API-ключ пользователя Redmine (по умолчанию "secret").</param>
+    /// <returns>Word-файл с отчётом по заявке или ошибку.</returns>
     [HttpGet("generate-issue-from-request")]
     public async Task<IActionResult> GenerateIssueFromRequest(
         [FromQuery] int issueId = 45,
@@ -112,7 +118,14 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-
+    /// <summary>
+    /// Генерирует Excel-отчёт по акту сварки из svarka и возвращает его пользователю или отправляет на email.
+    /// </summary>
+    /// <param name="issueId">ID акта (issue) в Redmine (по умолчанию 6).</param>
+    /// <param name="projectIdentifier">ID проекта в Redmine (по умолчанию 1).</param>
+    /// <param name="apiKey">API-ключ пользователя Redmine (по умолчанию "secret").</param>
+    /// <param name="sendMail">Флаг: отправлять ли отчёт на email (по умолчанию false).</param>
+    /// <returns>Excel-файл с отчётом или сообщение об отправке на email, либо ошибку.</returns>
     [HttpGet("generate-issue-from-welding")]
     public async Task<IActionResult> GenerateIssueFromWelding(
         [FromQuery] int issueId = 6,
@@ -191,6 +204,13 @@ public class WeldingReportController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Генерирует Excel-отчёт по всему проекту сварки из svarka и возвращает его пользователю или отправляет на email.
+    /// </summary>
+    /// <param name="projectIdentifier">ID проекта в Redmine (по умолчанию 1).</param>
+    /// <param name="apiKey">API-ключ пользователя Redmine (по умолчанию "secret").</param>
+    /// <param name="sendMail">Флаг: отправлять ли отчёт на email (по умолчанию false).</param>
+    /// <returns>Excel-файл с отчётом по проекту или сообщение об отправке на email, либо ошибку.</returns>
     [HttpGet("generate-project-from-welding")]
     public async Task<IActionResult> GenerateProjectFromWelding(
         [FromQuery] int projectIdentifier = 1,
@@ -269,7 +289,13 @@ public class WeldingReportController : ControllerBase
         }
     }
 
-
+    /// <summary>
+    /// Генерирует Excel-отчёт SUPR по группе заявок и возвращает его пользователю.
+    /// </summary>
+    /// <param name="projectIdentifier">Идентификатор проекта SUPR (по умолчанию "test_project").</param>
+    /// <param name="apiKey">API-ключ пользователя SUPR (по умолчанию "secret").</param>
+    /// <param name="applicationNumber">Номер заявки (по умолчанию 222).</param>
+    /// <returns>Excel-файл с отчётом SUPR или ошибку.</returns>
     [HttpGet("generate-group-from-supr")]
     public async Task<IActionResult> GenerateGroupFromSupr(
         [FromQuery] string projectIdentifier = "test_project",
