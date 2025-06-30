@@ -87,9 +87,13 @@
         {
             try
             {
+                int calculatedJointsFact = data.DiametrInchesPlan != 0
+                    ? (int)Math.Round(data.DiametrInchesFact / data.DiametrInchesPlan * data.JointsCountPlan, MidpointRounding.AwayFromZero)
+                    : 0;
+
                 string resultValue = $"Итого по акту: {data.ReportNumber}";
                 worksheet.Cells[row, 1].Value = resultValue;
-                worksheet.Cells[row, 6].Value = $"{data.JointsCountFact} из {data.JointsCountPlan}";
+                worksheet.Cells[row, 6].Value = $"{calculatedJointsFact} из {data.JointsCountPlan}";
                 worksheet.Cells[row, 9].Value = $"{data.DiametrInchesFact} из {data.DiametrInchesPlan}";
 
                 // Объединение ячеек
