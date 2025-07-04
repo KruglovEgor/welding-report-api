@@ -30,7 +30,13 @@ FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./welding-report.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
+# Стадия архивации
+FROM publish AS archive
+WORKDIR /app/publish
+RUN tar -czf /app/welding.tar.gz .
+
 FROM base AS final
 WORKDIR /app
+COPY --from=archive /app/welding.tar.gz /app/welding.tar.gz
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "welding-report.dll"]
