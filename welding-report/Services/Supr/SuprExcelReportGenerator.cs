@@ -49,8 +49,6 @@ namespace welding_report.Services.Supr
 
             // Заполняем данные и запоминаем значения для каждой строки
             var cellValues = new Dictionary<int, Dictionary<int, string>>();
-            var columnsToMerge = new[] { 4, 5, 6, 8 }; // Колонки, для которых нужно объединять
-
             worksheet.Cells[7, 2, 7, 13].AutoFilter = true;
 
             // Заполняем данные
@@ -69,6 +67,7 @@ namespace welding_report.Services.Supr
                 worksheet.Cells[currentRow, 4].Value = issue.Value.InstallationName;
                 worksheet.Cells[currentRow, 5].Value = issue.Value.TechPositionName;
                 worksheet.Cells[currentRow, 6].Value = issue.Value.EquipmentUnitNumber;
+                worksheet.Cells[currentRow, 7].Value = issue.Value.EquipmentType;
                 worksheet.Cells[currentRow, 8].Value = issue.Value.MarkAndManufacturer;
 
 

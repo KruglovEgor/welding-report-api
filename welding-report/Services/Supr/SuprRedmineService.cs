@@ -184,6 +184,9 @@ namespace welding_report.Services.Supr
                         case 40: // Изготовитель
                             manufacturer = field.Value.GetString();
                             break;
+                        case 65: // Тип оборудования
+                            suprIssueReportData.EquipmentType = field.Value.GetString();
+                            break;
                     }
                 }
 

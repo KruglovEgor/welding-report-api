@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography.Pkcs;
 
 namespace welding_report.Models
 {
@@ -268,8 +269,7 @@ namespace welding_report.Models
         public string Condition { get; set; }
         public string Priority { get; set; }
         public string JobType { get; set; }
-
-
+        public string EquipmentType { get; set; }
         public string InstallationName { get; set; }
 
         public string TechPositionName { get; set; }
