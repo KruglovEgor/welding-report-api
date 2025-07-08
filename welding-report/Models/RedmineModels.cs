@@ -92,6 +92,13 @@ namespace welding_report.Models
     {
         [JsonPropertyName("issues")]
         public List<WeldingIssue> Issues { get; set; }
+        [JsonPropertyName("offset")]
+        public int Offset { get; set; }
+        [JsonPropertyName("total_count")]
+        public int TotalCount { get; set; }
+        [JsonPropertyName("limit")]
+        public int Limit { get; set; }
+
     }
 
     public class RedmineChildIssueListResponse

@@ -220,12 +220,29 @@ namespace welding_report.Services.Welding
 
             // Получаем все акты проекта (трекер ID=1)
             var response = await _httpClient.GetAsync(
-                $"projects/{projectIdentifier}/issues.json?tracker_id=1&status_id=*"
+                $"projects/{projectIdentifier}/issues.json?tracker_id=1&status_id=*&limit=100"
             );
             response.EnsureSuccessStatusCode();
 
             var issuesResponse = await response.Content.ReadFromJsonAsync<WeldingIssueListResponse>();
             if (issuesResponse?.Issues == null) return projectReport;
+
+            int totalDownloaded = issuesResponse.Limit + issuesResponse.Offset;
+
+            while (issuesResponse.TotalCount > totalDownloaded)
+            {
+                var repeatedResponse = await _httpClient.GetAsync(
+                $"projects/{projectIdentifier}/issues.json?tracker_id=1&status_id=*&limit=100&offset={totalDownloaded}"
+            );
+                repeatedResponse.EnsureSuccessStatusCode();
+
+                var issuesRepeatedResponse = await repeatedResponse.Content.ReadFromJsonAsync<WeldingIssueListResponse>();
+                if (issuesRepeatedResponse?.Issues != null)
+                {
+                    issuesResponse.Issues.AddRange(issuesRepeatedResponse.Issues);
+                }
+                totalDownloaded += issuesRepeatedResponse.Limit;
+            }
 
             // Для каждого акта собираем данные
             foreach (var actIssue in issuesResponse.Issues)
