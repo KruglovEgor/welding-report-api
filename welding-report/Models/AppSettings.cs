@@ -8,7 +8,9 @@
         public List<string> AllowedEmailDomains { get; set; }
         public int MaxRowHeight { get; set; }
         public string WorksheetName { get; set; }
-
         public int MaxPhotoColumnWidth { get; set; }
+        public string ProjectReportRowColor1 { get; set; } 
+        public string ProjectReportRowColor2 { get; set; }
+
     }
 }
