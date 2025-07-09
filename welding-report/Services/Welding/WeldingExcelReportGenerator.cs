@@ -28,6 +28,9 @@
         private readonly int _maxPhotoColumnWidth;
         private readonly System.Drawing.Color _rowColor1;
         private readonly System.Drawing.Color _rowColor2;
+        private readonly int _maxPhotoWidthPx;
+        private readonly int _maxPhotoHeightPx;
+        private readonly int _photoJpegQuality;
 
         private readonly int startRow = 2;
         private readonly int photoColumn = 10;
@@ -54,6 +57,10 @@
             _maxPhotoColumnWidth = appSettings.Value.MaxPhotoColumnWidth;
             _rowColor1 = ColorTranslator.FromHtml(appSettings.Value.ProjectReportRowColor1 ?? "#F5F5F5");
             _rowColor2 = ColorTranslator.FromHtml(appSettings.Value.ProjectReportRowColor2 ?? "#E8F0FE");
+            _maxPhotoWidthPx = appSettings.Value.MaxPhotoWidthPx;
+            _maxPhotoHeightPx = appSettings.Value.MaxPhotoHeightPx;
+            _photoJpegQuality = appSettings.Value.PhotoJpegQuality;
+
 
             webClient.Headers.Add("X-Redmine-API-Key", apiKey);
         }
@@ -311,29 +318,40 @@
                     _logger.LogError($"Нулевые размеры изображения: {bitmap.Width}x{bitmap.Height}");
                     return (0, 0, isNewRow);
                 }
-                
-                //1.3 коэффициент для пикселей (1 единица высоты в excel = 1.(3) пикселя)
-                double scale = _maxRowHeight*1.3 / bitmap.Height;
-                int newWidth = (int)(bitmap.Width * scale);
-                int newHeight = (int)(bitmap.Height * scale);
 
-                //_logger.LogInformation($"xOf: {xOffset}, newWid: {newWidth}, value: {(xOffset + newWidth) / 7.0}, maxWid: {_maxPhotoColumnWidth}");
+                // 1. Вычисляем коэффициент масштабирования
+                double scaleX = (double)_maxPhotoWidthPx / bitmap.Width;
+                double scaleY = (double)_maxPhotoHeightPx / bitmap.Height;
+                double scale = Math.Min(1.0, Math.Min(scaleX, scaleY)); // не увеличиваем
 
-                if ((xOffset+newWidth)/7.0 > _maxPhotoColumnWidth)
+                int resizedWidth = (int)(bitmap.Width * scale);
+                int resizedHeight = (int)(bitmap.Height * scale);
+
+                using (var compressedStream = new MemoryStream())
                 {
-                    isNewRow = true;
-                    yOffset += newHeight + yGap;
-                    xOffset = xGap;
-                }
+                    using (var resizedBitmap = bitmap.Resize(new SKImageInfo(resizedWidth, resizedHeight), SKFilterQuality.Medium))
+                    using (var image = SKImage.FromBitmap(resizedBitmap))
+                    using (var data = image.Encode(SKEncodedImageFormat.Jpeg, _photoJpegQuality))
+                    {
+                        data.SaveTo(compressedStream);
+                    }
+                    compressedStream.Position = 0;
 
-                //_logger.LogInformation($"New Bitmap: {newWidth}x{newHeight}");
+                    // 3. Для отображения в Excel используем прежнюю логику масштабирования
+                    double scaleExcel = _maxRowHeight * 1.3 / bitmap.Height;
+                    int newWidth = (int)(bitmap.Width * scaleExcel);
+                    int newHeight = (int)(bitmap.Height * scaleExcel);
 
-                // Вставка изображения из нового потока
-                using (var insertStream = new MemoryStream(imageBytes))
-                {
+                    if ((xOffset + newWidth) / 7.0 > _maxPhotoColumnWidth)
+                    {
+                        isNewRow = true;
+                        yOffset += newHeight + yGap;
+                        xOffset = xGap;
+                    }
+
                     var picture = worksheet.Drawings.AddPicture(
                         $"Photo_{Guid.NewGuid()}",
-                        insertStream
+                        compressedStream
                     );
 
                     // Упрощенное позиционирование (в пикселях)
@@ -343,11 +361,11 @@
                         column - 1,   // Колонка
                         (int)xOffset  // Смещение X (в пикселях)
                     );
-
                     picture.SetSize(newWidth, newHeight);
-                }
 
-                return (newWidth, newHeight, isNewRow);
+
+                    return (newWidth, newHeight, isNewRow);
+                }
             }
         }
     }

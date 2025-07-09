@@ -11,6 +11,8 @@
         public int MaxPhotoColumnWidth { get; set; }
         public string ProjectReportRowColor1 { get; set; } 
         public string ProjectReportRowColor2 { get; set; }
-
+        public int MaxPhotoWidthPx { get; set; }
+        public int MaxPhotoHeightPx { get; set; }
+        public int PhotoJpegQuality { get; set; }
     }
 }
