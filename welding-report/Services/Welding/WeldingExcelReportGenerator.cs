@@ -296,6 +296,8 @@
             double yOffset,
             int identifier = 0)
         {
+            _logger.LogInformation($"Processing photo: {photoUrl}");
+
             ExcelPicture picture = null;
             int newWidth = 0;
             int newHeight = 0;
