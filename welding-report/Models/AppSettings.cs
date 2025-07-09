@@ -14,5 +14,6 @@
         public int MaxPhotoWidthPx { get; set; }
         public int MaxPhotoHeightPx { get; set; }
         public int PhotoJpegQuality { get; set; }
+        public string WeldingPhotoCachePath { get; set; }
     }
 }

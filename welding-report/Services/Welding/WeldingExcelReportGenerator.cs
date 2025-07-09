@@ -11,6 +11,7 @@
     using DocumentFormat.OpenXml.Drawing;
     using DocumentFormat.OpenXml.Spreadsheet;
     using System.Drawing;
+    using OfficeOpenXml.Drawing;
 
     public interface IWeldingExcelReportGenerator
     {
@@ -31,6 +32,7 @@
         private readonly int _maxPhotoWidthPx;
         private readonly int _maxPhotoHeightPx;
         private readonly int _photoJpegQuality;
+        private readonly string _photoCachePath;
 
         private readonly int startRow = 2;
         private readonly int photoColumn = 10;
@@ -60,7 +62,7 @@
             _maxPhotoWidthPx = appSettings.Value.MaxPhotoWidthPx;
             _maxPhotoHeightPx = appSettings.Value.MaxPhotoHeightPx;
             _photoJpegQuality = appSettings.Value.PhotoJpegQuality;
-
+            _photoCachePath = appSettings.Value.WeldingPhotoCachePath ?? "Resources/Welding/Photos";
 
             webClient.Headers.Add("X-Redmine-API-Key", apiKey);
         }
@@ -95,7 +97,7 @@
                 var firstRow = row;
                 InsertResultLine(worksheet, IssueData, row);
                 row += 1;
-                var lastRow = FillData(worksheet, IssueData, row);
+                var lastRow = FillData(worksheet, IssueData, row, data.Identifier);
                 row = lastRow;
 
                 ApplyBackgroundColor(worksheet, firstRow, 1, lastRow - 1, photoColumn, color);
@@ -175,7 +177,7 @@
 
 
 
-        private int FillData(ExcelWorksheet worksheet, WeldingIssueReportData data, int row)
+        private int FillData(ExcelWorksheet worksheet, WeldingIssueReportData data, int row, int identifier = 0)
         {
             int innerRow = row;
             try
@@ -218,11 +220,8 @@
                             try
                             {
                                 //_logger.LogInformation($"{sortedJoints} - {photoUrl}");
-
-                                byte[] imageBytes = webClient.DownloadData(photoUrl);
-
-                                using var imageStream = new MemoryStream(imageBytes);
-                                var imgInfo = InsertImage(worksheet, innerRow, photoColumn, imageStream, currentWidth, currentHeight);
+                                
+                                var imgInfo = InsertImage(worksheet, innerRow, photoColumn, photoUrl, currentWidth, currentHeight, identifier);
 
                                 if (imgInfo.isNewRow)
                                 {
@@ -280,7 +279,6 @@
             }
         }
 
-
         private void ApplyBackgroundColor(ExcelWorksheet worksheet, int startRow, int startColumn, int lastRow, int lastColumn, System.Drawing.Color color)
         {
             var range = worksheet.Cells[startRow, startColumn, lastRow, lastColumn];
@@ -293,80 +291,142 @@
             ExcelWorksheet worksheet,
             int row,
             int column,
-            Stream imageStream,
+            string photoUrl,
             double xOffset,
-            double yOffset)
+            double yOffset,
+            int identifier = 0)
         {
+            ExcelPicture picture = null;
+            int newWidth = 0;
+            int newHeight = 0;
             bool isNewRow = false;
-            // Создаем копию потока для расчета размеров
-            byte[] imageBytes;
-            using (var tempStream = new MemoryStream())
+            string cachePath = BuildPhotoCachePath(identifier, photoUrl);
+
+            bool isCached = false;
+            
+            if (identifier > 0)
             {
-                imageStream.CopyTo(tempStream);
-                imageBytes = tempStream.ToArray();
-            }
-
-            // Расчет размеров изображения
-            using (var sizeStream = new MemoryStream(imageBytes))
-            using (var bitmap = SKBitmap.Decode(sizeStream))
-            {
-                if (bitmap == null)
-                    throw new Exception("Неверный формат изображения");
-
-                if (bitmap.Height == 0 || bitmap.Width == 0)
+                byte[] cachedPhoto = TryGetPhoto(cachePath);
+                if (cachedPhoto != null)
                 {
-                    _logger.LogError($"Нулевые размеры изображения: {bitmap.Width}x{bitmap.Height}");
-                    return (0, 0, isNewRow);
-                }
-
-                // 1. Вычисляем коэффициент масштабирования
-                double scaleX = (double)_maxPhotoWidthPx / bitmap.Width;
-                double scaleY = (double)_maxPhotoHeightPx / bitmap.Height;
-                double scale = Math.Min(1.0, Math.Min(scaleX, scaleY)); // не увеличиваем
-
-                int resizedWidth = (int)(bitmap.Width * scale);
-                int resizedHeight = (int)(bitmap.Height * scale);
-
-                using (var compressedStream = new MemoryStream())
-                {
-                    using (var resizedBitmap = bitmap.Resize(new SKImageInfo(resizedWidth, resizedHeight), SKFilterQuality.Medium))
-                    using (var image = SKImage.FromBitmap(resizedBitmap))
-                    using (var data = image.Encode(SKEncodedImageFormat.Jpeg, _photoJpegQuality))
+                    using (var bitmapStream = new MemoryStream(cachedPhoto))
+                    using (var bitmap = SKBitmap.Decode(bitmapStream))
                     {
-                        data.SaveTo(compressedStream);
-                    }
-                    compressedStream.Position = 0;
-
-                    // 3. Для отображения в Excel используем прежнюю логику масштабирования
-                    double scaleExcel = _maxRowHeight * 1.3 / bitmap.Height;
-                    int newWidth = (int)(bitmap.Width * scaleExcel);
-                    int newHeight = (int)(bitmap.Height * scaleExcel);
-
-                    if ((xOffset + newWidth) / 7.0 > _maxPhotoColumnWidth)
-                    {
-                        isNewRow = true;
-                        yOffset += newHeight + yGap;
-                        xOffset = xGap;
+                        double scaleExcel = _maxRowHeight * 1.3 / bitmap.Height;
+                        newWidth = (int)(bitmap.Width * scaleExcel);
+                        newHeight = (int)(bitmap.Height * scaleExcel);
                     }
 
-                    var picture = worksheet.Drawings.AddPicture(
+                    var pictureStream = new MemoryStream(cachedPhoto);
+                    picture = worksheet.Drawings.AddPicture(
                         $"Photo_{Guid.NewGuid()}",
-                        compressedStream
+                        pictureStream
                     );
-
-                    // Упрощенное позиционирование (в пикселях)
-                    picture.SetPosition(
-                        row - 1,      // Строка
-                        (int)yOffset, // Смещение Y (в пикселях)
-                        column - 1,   // Колонка
-                        (int)xOffset  // Смещение X (в пикселях)
-                    );
-                    picture.SetSize(newWidth, newHeight);
-
-
-                    return (newWidth, newHeight, isNewRow);
+                    isCached = true;
+                    _logger.LogInformation($"Используется кэшированное фото: {cachePath}");
                 }
             }
+
+            if (!isCached)
+            {
+                byte[] imageBytes = webClient.DownloadData(photoUrl);
+                using var imageStream = new MemoryStream(imageBytes);
+
+                // Расчет размеров изображения
+                using (var bitmap = SKBitmap.Decode(imageStream))
+                {
+                    if (bitmap == null)
+                        throw new Exception("Неверный формат изображения");
+
+                    if (bitmap.Height == 0 || bitmap.Width == 0)
+                    {
+                        _logger.LogError($"Нулевые размеры изображения: {bitmap.Width}x{bitmap.Height}");
+                        return (0, 0, isNewRow);
+                    }
+
+                    // 1. Вычисляем коэффициент масштабирования
+                    double scaleX = (double)_maxPhotoWidthPx / bitmap.Width;
+                    double scaleY = (double)_maxPhotoHeightPx / bitmap.Height;
+                    double scale = Math.Min(1.0, Math.Min(scaleX, scaleY)); // не увеличиваем
+
+                    int resizedWidth = (int)(bitmap.Width * scale);
+                    int resizedHeight = (int)(bitmap.Height * scale);
+
+                    using (var compressedStream = new MemoryStream())
+                    {
+                        using (var resizedBitmap = bitmap.Resize(new SKImageInfo(resizedWidth, resizedHeight), SKFilterQuality.Medium))
+                        using (var image = SKImage.FromBitmap(resizedBitmap))
+                        using (var data = image.Encode(SKEncodedImageFormat.Jpeg, _photoJpegQuality))
+                        {
+                            data.SaveTo(compressedStream);
+                        }
+                        compressedStream.Position = 0;
+
+                        if (identifier > 0)
+                        {
+                            SavePhoto(cachePath, compressedStream.ToArray());
+                        }
+
+                        // 3. Для отображения в Excel используем прежнюю логику масштабирования
+                        double scaleExcel = _maxRowHeight * 1.3 / bitmap.Height;
+                        newWidth = (int)(bitmap.Width * scaleExcel);
+                        newHeight = (int)(bitmap.Height * scaleExcel);
+
+                        picture = worksheet.Drawings.AddPicture(
+                            $"Photo_{Guid.NewGuid()}",
+                            compressedStream
+                        );
+                    }
+                }
+             }
+
+            if ((xOffset + newWidth) / 7.0 > _maxPhotoColumnWidth)
+            {
+                isNewRow = true;
+                yOffset += newHeight + yGap;
+                xOffset = xGap;
+            }
+
+            // Упрощенное позиционирование (в пикселях)
+            picture.SetPosition(
+                row - 1,      // Строка
+                (int)yOffset, // Смещение Y (в пикселях)
+                column - 1,   // Колонка
+                (int)xOffset  // Смещение X (в пикселях)
+            );
+            picture.SetSize(newWidth, newHeight);
+
+            return (newWidth, newHeight, isNewRow);
         }
+         
+
+        // Построение пути по URL и identifier
+        private string BuildPhotoCachePath(int identifier, string photoUrl)
+        {
+            // Извлекаем часть после "attachments/download/"
+            var uri = new Uri(photoUrl);
+            var parts = uri.AbsolutePath.Split(new[] { "attachments/download/" }, StringSplitOptions.None);
+            if (parts.Length < 2)
+                throw new ArgumentException("Некорректный формат URL для фото");
+
+            var filePart = parts[1].Replace('/', '_');
+            var dir = System.IO.Path.Combine(_photoCachePath, identifier.ToString());
+            Directory.CreateDirectory(dir);
+            return System.IO.Path.Combine(dir, filePart);
+        }
+
+        // 1. Получить фото по пути (или null, если нет)
+        private byte[] TryGetPhoto(string path)
+        {
+            return File.Exists(path) ? File.ReadAllBytes(path) : null;
+        }
+
+        // 2. Сохранить фото по пути (перезаписывает)
+        private void SavePhoto(string path, byte[] data)
+        {
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, data);
+        }
+
     }
 }
